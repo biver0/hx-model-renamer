@@ -13,7 +13,7 @@ Everything runs in your browser. No firmware is uploaded, and none is included i
 ## Notes
 
 - Unofficial and experimental. Not made or supported by Line 6. Install modified firmware at your own risk.
-- Presets made before renaming keep Line 6's names on their footswitch labels (saved in the preset); new blocks get the new names.
+- Presets made before renaming keep Line 6's names on their footswitch labels (saved in the preset); new blocks get the new names. Step 5 on the page updates older presets' labels (export them as `.hlx`, drop them in, import them back).
 - HX Edit keeps showing Line 6's names (it has its own model list). Presets are unaffected: they store model IDs, not names.
 - The NAM A2 Lite block's name is locked.
 - Tested in software on all six files (stock and NAM A2 Lite for each unit): every checksum passes nocaseguy's verifier, only name bytes change, and setting the names back restores the original byte for byte. Installed on hardware so far: HX Effects.
@@ -35,9 +35,12 @@ New display names are added to the database's string table and each renamed mode
 
 Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
 
+### 1.2.0 (2026-11-22)
+- **New: fix footswitch labels in older presets** (step 5). Export presets from HX Edit, drop the `.hlx` files on the page, and it changes every footswitch label that is still a stock Line 6 name to your new name. Labels you typed yourself, NAM A2 Lite and Line 6 Originals stay as they are. Import the fixed presets back onto their slots.
+
 ### 1.1.1 (2026-11-22)
 - **Fixed:** each model's display name in the unit's model database is now renamed too (1.1.0 and earlier left it as Line 6's). If you built a file with 1.1.0 or earlier, rebuild it and reinstall; drop the old file on the page and it will tell you so.
-- **Known limitation:** presets save each footswitch's label when its block is assigned, so presets made before renaming still show Line 6's names on the scribble strips of switches that aren't selected. Blocks you add from now on get the new names. Re-pick the model or edit the label to update an older preset. A preset fixer is being worked on.
+- **Known limitation:** presets save each footswitch's label when its block is assigned, so presets made before renaming still show Line 6's names on the scribble strips of switches that aren't selected. Blocks you add from now on get the new names. Fixed for existing presets by 1.2.0's preset step.
 
 ### 1.1.0 (2026-11-22)
 - Added HX Stomp and HX Stomp XL support (stock and NAM A2 Lite builds).

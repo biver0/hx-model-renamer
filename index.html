@@ -38,7 +38,7 @@
   .warning b { color: var(--warn); }
 
   nav.steps-nav { position: sticky; top: 0; z-index: 3; margin-inline: -4px; padding: 8px 4px; background: var(--bg); }
-  nav.steps-nav ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  nav.steps-nav ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
   nav.steps-nav a { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: 8px; text-decoration: none;
     color: var(--muted); font-size: 12.5px; line-height: 1.2; text-align: center; border: 1px solid var(--line); background: var(--panel); }
   nav.steps-nav a:hover { border-color: var(--accent); color: var(--ink); }
@@ -155,6 +155,7 @@
       <li><a href="#s2" id="nav2"><span class="n">2</span><span class="t">Name models</span></a></li>
       <li><a href="#s3" id="nav3"><span class="n">3</span><span class="t">Build</span></a></li>
       <li><a href="#s4" id="nav4"><span class="n">4</span><span class="t">Install</span></a></li>
+      <li><a href="#s5" id="nav5"><span class="n">5</span><span class="t">Fix presets</span></a></li>
     </ol>
   </nav>
 
@@ -236,8 +237,37 @@
       <li>Let it finish, and let the unit restart on its own.</li>
       <li>Open the model list: <b>Distortion</b> should now show <b>Boss SD-1</b> where <b>Stupor OD</b> was.</li>
     </ol>
-    <p class="tip"><b>Footswitch labels in your existing presets keep Line 6's names.</b> A preset saves each footswitch's label when its block is assigned, so on presets made before renaming, the scribble strips show the old name on switches that aren't selected. Blocks you add from now on get the new names. To update an older preset, re-pick the model on that switch or edit its label.</p>
+    <p class="tip"><b>Footswitch labels in your existing presets keep Line 6's names.</b> A preset saves each footswitch's label when its block is assigned, so on presets made before renaming, the scribble strips show the old name on switches that aren't selected. Blocks you add from now on get the new names. Step 5 below updates them for you.</p>
     <p class="tip"><b>HX Edit still shows Line 6's names.</b> It reads them from its own model list on your computer, not from the unit. Your presets are fine either way: they store each model's ID, not its name.</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="step" id="s5">
+    <div class="step-head">
+      <span class="n">5</span>
+      <h2>Fix footswitch labels in older presets</h2>
+      <p>Optional. Presets made before renaming keep Line 6's names on their footswitch labels.</p>
+    </div>
+    <p>A preset saves each footswitch's label when its block is assigned, so on older presets the scribble strips show the old name on switches that aren't selected. This updates those labels to the names in step 2.</p>
+    <ol class="how">
+      <li>In HX Edit, export the presets you want to fix (<b>Export</b> in the preset list; you can select several).</li>
+      <li>Drop the <code>.hlx</code> files here. Your firmware from step 1 has to be loaded.</li>
+      <li>Download the fixed presets, then in HX Edit import each one back onto its own slot (drag it onto the slot, or select the slot and choose <b>Import</b>).</li>
+    </ol>
+    <label class="drop" id="pDrop">
+      <svg class="jack" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="8" y="10" width="32" height="28" rx="3"/><circle cx="17" cy="24" r="4"/><circle cx="31" cy="24" r="4"/>
+      </svg>
+      <strong>Drop .hlx presets here</strong>
+      <small>one or many · only labels that are still a stock Line 6 name change; labels you typed stay</small>
+      <input id="pPick" type="file" accept=".hlx" multiple>
+    </label>
+    <div class="status" id="pStatus" hidden>
+      <span class="title" id="pTitle"></span>
+      <p id="pText"></p>
+      <div class="files" id="pFiles"></div>
+    </div>
+    <div class="row-actions"><a class="btn big primary" id="pDl" hidden href="#">Download</a></div>
   </section>
 
   <section class="step recovery" id="recovery">
@@ -451,7 +481,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
-  const VERSION = "1.1.1";
+  const VERSION = "1.2.0";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -686,11 +716,13 @@
     const e3e = entries[3];
     const e3 = swap32(payload.subarray(e3e.payOff, e3e.payOff + e3e.payLen));
     const disp = e3DisplayNames(e3);
-    const tagStr = e3Parse(e3).strs.find((s) => s.startsWith(TAG));
+    const e3strs = e3Parse(e3).strs;
+    const tagStr = e3strs.find((s) => s.startsWith(TAG));
     const builtBy = tagStr ? ((tagStr.split(":").find((x) => x.startsWith("v")) || "v1.1.1").slice(1)) : null;
     for (const m of models.values()) {
       if (!disp.has(m.ni)) throw new Error(`Model ${m.name} has no record in the model database (${where}).`);
       m.displayName = disp.get(m.ni);
+      m.symbol = e3strs[m.ni];          // e.g. HD2_DistKinkyBoostMono: a preset's @model plus Mono/Stereo
     }
     return { raw, chunks, head, payload, entries, e0, e3, builtBy, layout, unitKey, fileMd5, known: KNOWN_MD5[fileMd5] || null,
       models: [...models.values()], cats: layout.cats, folderNames, unit: layout.unit };
@@ -788,7 +820,56 @@
     return new Blob([lh, data, ch, end], { type: "application/zip" });
   }
 
-  root.HXRename = { VERSION, open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
+  // ---------- presets: footswitch labels ----------
+  // A preset (.hlx) saves each footswitch's label (@fs_label) when its block is assigned. Replace a label
+  // only when it is still a stock Line 6 name of that block's model. stockNames(m) -> [names], newName(m) -> name.
+  function relabelPreset(text, fw, stockNames, newName) {
+    const doc = JSON.parse(text);
+    const changes = [];
+    const bySym = new Map(fw.models.map((m) => [m.symbol, m]));
+    const fix = (tone) => {
+      const fs = tone && tone.footswitch;
+      if (!fs) return;
+      for (const dsp of Object.keys(fs)) for (const blk of Object.keys(fs[dsp] || {})) {
+        const f = fs[dsp][blk], b = tone[dsp] && tone[dsp][blk];
+        if (!f || typeof f["@fs_label"] !== "string" || !b || typeof b["@model"] !== "string") continue;
+        const base = b["@model"];
+        const m = bySym.get(base + (b["@stereo"] ? "Stereo" : "Mono")) || bySym.get(base);
+        if (!m || m.locked) continue;
+        const to = newName(m), from = f["@fs_label"];
+        if (!to || to === from || !stockNames(m).includes(from)) continue;
+        f["@fs_label"] = to; changes.push({ from, to });
+      }
+    };
+    // a preset, or a setlist/bundle holding presets
+    const visit = (o) => {
+      if (!o || typeof o !== "object") return;
+      if (o.tone && typeof o.tone === "object") fix(o.tone);
+      for (const v of Object.values(o)) if (v && typeof v === "object" && v !== o.tone) visit(v);
+    };
+    visit(doc);
+    // HX Edit's own layout: two-space indent, " : " between key and value
+    const out = JSON.stringify(doc, null, 2).replace(/^(\s*"(?:[^"\\]|\\.)*")(: )/gm, "$1 : ");
+    return { text: out + "\n", changes, name: (doc.data && doc.data.meta && doc.data.meta.name) || null };
+  }
+  function zipMany(files) {             // [{name, data: Uint8Array}] -> stored .zip
+    const enc = new TextEncoder(), parts = [], central = [];
+    let off = 0;
+    const w16 = (b, o, v) => { b[o] = v; b[o + 1] = v >>> 8; };
+    for (const f of files) {
+      const nb = enc.encode(f.name), crc = crc32(f.data), n = f.data.length;
+      const lh = new Uint8Array(30 + nb.length);
+      wle32(lh, 0, 0x04034b50); w16(lh, 4, 20); wle32(lh, 14, crc); wle32(lh, 18, n); wle32(lh, 22, n); w16(lh, 26, nb.length); lh.set(nb, 30);
+      const ch = new Uint8Array(46 + nb.length);
+      wle32(ch, 0, 0x02014b50); w16(ch, 4, 20); w16(ch, 6, 20); wle32(ch, 16, crc); wle32(ch, 20, n); wle32(ch, 24, n); w16(ch, 28, nb.length); wle32(ch, 42, off); ch.set(nb, 46);
+      parts.push(lh, f.data); central.push(ch); off += lh.length + n;
+    }
+    const cl = central.reduce((s, x) => s + x.length, 0), end = new Uint8Array(22);
+    wle32(end, 0, 0x06054b50); w16(end, 8, files.length); w16(end, 10, files.length); wle32(end, 12, cl); wle32(end, 16, off);
+    return new Blob([...parts, ...central, end], { type: "application/zip" });
+  }
+
+  root.HXRename = { relabelPreset, zipMany, VERSION, open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -969,6 +1050,55 @@
     } catch (err) { alertBox("Couldn't load that file: " + err.message, true); }
   });
   function alertBox(msg, bad) { $("summary").innerHTML = `<span style="color:var(${bad ? "--bad" : "--ok"})">${esc(msg)}</span>`; setTimeout(summary, 4000); }
+
+  // ---- step 5: presets ----
+  const pDrop = $("pDrop");
+  ["dragenter", "dragover"].forEach((ev) => pDrop.addEventListener(ev, (e) => { e.preventDefault(); pDrop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => pDrop.addEventListener(ev, () => pDrop.classList.remove("over")));
+  pDrop.addEventListener("drop", (e) => { e.preventDefault(); relabel([...e.dataTransfer.files]); });
+  $("pPick").addEventListener("change", (e) => { relabel([...e.target.files]); e.target.value = ""; });
+  let pUrl = null;
+  async function relabel(files) {
+    $("pDl").hidden = true;
+    if (!fw) { status("p", "bad", "Load your firmware first", "Step 1 needs the firmware these presets will run on, so the page knows each model."); return; }
+    files = files.filter((f) => /\.hlx$/i.test(f.name));
+    if (!files.length) { status("p", "bad", "No .hlx presets", "Export presets from HX Edit and drop the .hlx files."); return; }
+    const byNi = new Map(); for (const g of groups) for (const m of g.models) byNi.set(m.ni, g);
+    const stockNames = (m) => [D.stockShort[m.ni], D.stockLong[m.ni], (D.stockDisp || {})[m.ni]].filter(Boolean);
+    const newName = (m) => { const g = byNi.get(m.ni); return g && !g.locked && !H.checkName(g.value) ? g.value : null; };
+    const out = [], rows = [], bad = [];
+    let total = 0;
+    for (const f of files) {
+      try {
+        const r = H.relabelPreset(await f.text(), fw, stockNames, newName);
+        total += r.changes.length;
+        rows.push([r.name || f.name, r.changes.length ? r.changes.map((c) => c.from + " → " + c.to).join(", ") : "nothing to change"]);
+        if (r.changes.length) out.push({ name: f.name, data: new TextEncoder().encode(r.text) });
+      } catch (err) { bad.push(f.name + ": " + err.message); }
+    }
+    if (!out.length) {
+      status("p", bad.length ? "bad" : "ok", bad.length ? "Couldn't read some presets" : "Nothing to change",
+        bad.length ? esc(bad.join("; ")) : "Every footswitch label is already custom or up to date.", rows);
+      return;
+    }
+    status("p", "ok", `${total} label${total === 1 ? "" : "s"} updated in ${out.length} preset${out.length === 1 ? "" : "s"}`,
+      (bad.length ? `Skipped: ${esc(bad.join("; "))}. ` : "") + "Import each one back onto its own slot in HX Edit.", rows);
+    const dl = $("pDl"); dl.hidden = false;
+    const host = await hostDownloads();
+    if (pUrl) URL.revokeObjectURL(pUrl);
+    if (host || out.length > 1) {
+      const zname = out.length === 1 ? out[0].name.replace(/\.hlx$/i, ".zip") : "presets-relabeled.zip";
+      const blob = H.zipMany(out);
+      dl.textContent = "Download " + zname;
+      if (host) {
+        dl.removeAttribute("href"); dl.removeAttribute("download");
+        dl.onclick = async (ev) => { ev.preventDefault(); try { await host.save({ filename: zname, data: blob }); } catch (e2) {} };
+      } else { pUrl = URL.createObjectURL(blob); dl.onclick = null; dl.href = pUrl; dl.download = zname; }
+    } else {
+      pUrl = URL.createObjectURL(new Blob([out[0].data], { type: "application/json" }));
+      dl.onclick = null; dl.href = pUrl; dl.download = out[0].name; dl.textContent = "Download " + out[0].name;
+    }
+  }
 
   // ---- step 3 ----
   let hostP = null;

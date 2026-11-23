@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HX Model Renamer</title>
+<style>
+  :root {
+    --bg: #f3f4f6; --panel: #ffffff; --ink: #1b1e24; --muted: #5d6470; --line: #d9dce2;
+    --accent: #c24a12; --accent-ink: #ffffff; --accent-soft: #fbe9df;
+    --ok: #1d7a46; --ok-soft: #e1f3e8; --bad: #b3261e; --bad-soft: #fbe5e3; --warn: #8a5a00; --warn-soft: #fbf0d5;
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --r: 10px; color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121418; --panel: #1b1e24; --ink: #eceef2; --muted: #a0a7b3; --line: #2e333c;
+      --accent: #f07a3c; --accent-ink: #1b0d05; --accent-soft: #3a2014;
+      --ok: #5fcf8d; --ok-soft: #143222; --bad: #ff8a80; --bad-soft: #3b1715; --warn: #f2c050; --warn-soft: #362a0f;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font-ui);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 56px; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 20px; }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--font-mono); font-size: .9em; }
+  code { overflow-wrap: anywhere; }
+  header { display: grid; gap: 8px; }
+  .eyebrow { font: 600 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { margin: 0; font-size: clamp(28px, 5vw, 38px); line-height: 1.12; letter-spacing: -.01em; text-wrap: balance; }
+  .lede { margin: 0; color: var(--muted); max-width: 64ch; font-size: 17px; }
+  .warning { padding: 12px 14px; border-radius: var(--r); background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); font-size: 14.5px; }
+  .warning b { color: var(--warn); }
+
+  nav.steps-nav { position: sticky; top: 0; z-index: 3; margin-inline: -4px; padding: 8px 4px; background: var(--bg); }
+  nav.steps-nav ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  nav.steps-nav a { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: 8px; text-decoration: none;
+    color: var(--muted); font-size: 12.5px; line-height: 1.2; text-align: center; border: 1px solid var(--line); background: var(--panel); }
+  nav.steps-nav a:hover { border-color: var(--accent); color: var(--ink); }
+  nav.steps-nav .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 700 12px/1 var(--font-mono); }
+  nav.steps-nav a.done .n { background: var(--ok-soft); color: var(--ok); }
+  @media (max-width: 560px) { nav.steps-nav .t { display: none; } }
+
+  section.step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 22px 24px; display: grid; gap: 14px; scroll-margin-top: 72px; }
+  @media (max-width: 520px) { section.step { padding: 18px 16px 20px; } }
+  .step-head { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+  .step-head .n { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 16px/1 var(--font-mono); }
+  .step.done .step-head .n { background: var(--ok); color: var(--panel); }
+  .step-head h2 { margin: 0; font-size: 21px; line-height: 1.25; }
+  .step-head p { grid-column: 2; margin: 0; color: var(--muted); font-size: 15px; }
+  .step p { margin: 0; }
+  h3 { margin: 6px 0 0; font-size: 15px; }
+  ol.how { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+  ol.how li::marker { color: var(--accent); font-weight: 700; }
+  ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+  .drop { position: relative; display: grid; place-items: center; gap: 8px; text-align: center; padding: 30px 20px; border: 2px dashed var(--line);
+    border-radius: var(--r); background: var(--bg); cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .drop strong { font-size: 17px; }
+  .drop small { color: var(--muted); }
+  .drop.busy { pointer-events: none; opacity: .55; }
+  .jack { width: 40px; height: 40px; color: var(--accent); }
+
+  .status { display: grid; gap: 8px; padding: 14px; border-radius: var(--r); border: 1px solid var(--line); }
+  .status.ok { background: var(--ok-soft); border-color: transparent; }
+  .status.bad { background: var(--bad-soft); border-color: transparent; }
+  .status.bad .title { color: var(--bad); }
+  .status.ok .title { color: var(--ok); }
+  .status .title { font-weight: 700; }
+  .files { display: grid; gap: 6px; font-size: 14px; }
+  .files div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel); }
+  .files b { font-weight: 600; }
+  @media (max-width: 520px) { .files div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+  .btn { font: 600 14px/1 var(--font-ui); padding: 10px 15px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); text-decoration: none; display: inline-block; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.big { font-size: 16px; padding: 13px 20px; }
+  .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .tip { padding: 10px 12px; background: var(--accent-soft); border-radius: 8px; font-size: 14.5px; }
+  .chip { font: 600 11.5px/1 var(--font-mono); padding: 5px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: 86px; z-index: 2; background: var(--panel); padding: 8px 0; }
+  .toolbar input[type=search], .toolbar select { font: 500 14px/1.2 var(--font-ui); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+  .toolbar input[type=search] { flex: 1 1 200px; min-width: 0; }
+  .toolbar label { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); }
+  .summary { font-size: 14px; color: var(--muted); }
+
+  .cat { display: grid; gap: 6px; }
+  .cat h3 { margin: 10px 0 2px; display: flex; gap: 8px; align-items: baseline; }
+  .cat h3 small { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .mrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 230px) 56px 34px; gap: 4px 12px; align-items: center;
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; }
+  .mrow.changed { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 40%, transparent); }
+  .mrow.bad { border-color: var(--bad); background: var(--bad-soft); }
+  .mrow.locked { opacity: .7; }
+  .mrow .who { min-width: 0; }
+  .mrow .who b { font-weight: 600; }
+  .mrow .who .chip { margin-left: 6px; }
+  .mrow .who small { display: block; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .mrow input { width: 100%; font: 500 15px/1.2 var(--font-mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 9px; }
+  .mrow input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .mrow input:disabled { background: var(--bg); }
+  .count { font: 600 12px/1 var(--font-mono); text-align: right; color: var(--muted); }
+  .count.near { color: var(--warn); }
+  .count.over { color: var(--bad); }
+  .undo { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 17px; padding: 4px; border-radius: 6px; }
+  .undo:hover { color: var(--accent); }
+  .undo:disabled { visibility: hidden; }
+  .mrow .err { grid-column: 1 / -1; color: var(--bad); font-size: 13px; }
+  @media (max-width: 600px) {
+    .mrow { grid-template-columns: minmax(0, 1fr) 50px 30px; }
+    .mrow .who { grid-column: 1 / -1; }
+  }
+
+  section.recovery { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+  section.recovery .step-head .n { background: var(--bad); color: var(--panel); }
+  details.faq { border-top: 1px solid var(--line); padding-top: 10px; }
+  details.faq summary { cursor: pointer; font-weight: 600; }
+  details.faq p { margin: 8px 0 4px; color: var(--muted); font-size: 15px; }
+  footer { color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+  footer a { color: inherit; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">HX Effects · Model Renamer · NAM A2 Lite friendly</span>
+    <h1>Rename the models on your HX Effects</h1>
+    <p class="lede">Drop in your firmware and give every model a name that says what it is: <b>Boss SD-1</b> instead of <b>Stupor OD</b>. Then download a new <b>.hxf</b> with every checksum fixed. It all runs in this browser. Nothing is uploaded anywhere.</p>
+  </header>
+
+  <div class="warning"><b>Unofficial and experimental.</b> This isn't made or supported by Line 6, and installing modified firmware is at your own risk. Only the model names change: no sound, preset or NAM code is touched. If anything goes wrong, the <a href="#recovery">Recovery</a> steps put the stock firmware back.</div>
+
+  <nav class="steps-nav" aria-label="Steps">
+    <ol>
+      <li><a href="#s1" id="nav1"><span class="n">1</span><span class="t">Load firmware</span></a></li>
+      <li><a href="#s2" id="nav2"><span class="n">2</span><span class="t">Name models</span></a></li>
+      <li><a href="#s3" id="nav3"><span class="n">3</span><span class="t">Build</span></a></li>
+      <li><a href="#s4" id="nav4"><span class="n">4</span><span class="t">Install</span></a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="step" id="s1">
+    <div class="step-head">
+      <span class="n">1</span>
+      <h2>Load your firmware</h2>
+      <p>The HX Effects 3.80.0 file: stock, the NAM A2 Lite build, or one you renamed here before.</p>
+    </div>
+    <label class="drop" id="fwDrop">
+      <svg class="jack" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="10" y="6" width="28" height="36" rx="3"/><path d="M17 15h14M17 22h14M17 29h8"/>
+      </svg>
+      <strong>Drop your .hxf file here</strong>
+      <small>or click to choose it · about 4 MB · it stays on this computer</small>
+      <input id="fwPick" type="file" accept=".hxf">
+    </label>
+    <div class="status" id="fwStatus" hidden>
+      <span class="title" id="fwTitle"></span>
+      <p id="fwText"></p>
+      <div class="files" id="fwFiles"></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="step" id="s2">
+    <div class="step-head">
+      <span class="n">2</span>
+      <h2>Name the models</h2>
+      <p>Up to 16 characters each. The suggested names follow the HX Effects manual's "Based On" list, and Line 6 Originals keep their names.</p>
+    </div>
+    <p class="tip" id="noFw">Load a firmware file in step 1 first.</p>
+    <div id="editor" hidden>
+      <div class="toolbar">
+        <input type="search" id="q" placeholder="Search names or pedals…" aria-label="Search">
+        <select id="catSel" aria-label="Category"><option value="">All categories</option></select>
+        <label><input type="checkbox" id="onlyChanged"> Only renamed</label>
+      </div>
+      <div class="row-actions" style="margin: 6px 0 4px">
+        <button class="btn" id="useSuggested" type="button">Use suggested names</button>
+        <button class="btn" id="resetAll" type="button">Back to Line 6 names</button>
+        <button class="btn" id="exportBtn" type="button">Save my names (.json)</button>
+        <label class="btn" style="position:relative; overflow:hidden">Load names (.json)<input id="importPick" type="file" accept=".json,application/json" style="position:absolute; inset:0; opacity:0; cursor:pointer"></label>
+      </div>
+      <p class="summary" id="summary"></p>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="step" id="s3">
+    <div class="step-head">
+      <span class="n">3</span>
+      <h2>Build the renamed firmware</h2>
+      <p>Takes a second or two. The page checks the new file from scratch before it gives it to you.</p>
+    </div>
+    <div class="row-actions">
+      <button class="btn primary big" id="buildBtn" type="button" disabled>Build renamed .hxf</button>
+      <a class="btn big" id="dlBtn" hidden href="#">Download</a>
+    </div>
+    <div class="status" id="bStatus" hidden>
+      <span class="title" id="bTitle"></span>
+      <p id="bText"></p>
+      <div class="files" id="bFiles"></div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="step" id="s4">
+    <div class="step-head">
+      <span class="n">4</span>
+      <h2>Install it</h2>
+      <p>The same way as any Line 6 update.</p>
+    </div>
+    <ol class="how">
+      <li>In HX Edit, back up your presets and IRs, then <b>close HX Edit</b>.</li>
+      <li>If you got a <code>.zip</code>, open it to get the <code>.hxf</code> inside. Open <b>Line 6 Updater</b>, choose <b>Choose File</b>, and pick the renamed <code>.hxf</code>.</li>
+      <li>Let it finish, and let the HX Effects restart on its own.</li>
+      <li>Open the model list: <b>Distortion → Mono</b> should now show <b>Boss SD-1</b> where <b>Stupor OD</b> was.</li>
+    </ol>
+    <p class="tip"><b>HX Edit still shows Line 6's names.</b> It reads them from its own model list on your computer, not from the unit. Your presets are fine either way: they store each model's ID, not its name.</p>
+  </section>
+
+  <section class="step recovery" id="recovery">
+    <div class="step-head">
+      <span class="n">!</span>
+      <h2>Recovery</h2>
+      <p>If the unit doesn't start, or you want the original names back.</p>
+    </div>
+    <ol class="how">
+      <li>Turn the HX Effects off. Hold the right arrow (<b>&gt;</b>) while you turn it on: that's its fail-safe update mode.</li>
+      <li>In Line 6 Updater, install the stock <code>HX_Effects_v3.80.0_0xd97239907.hxf</code> (or your NAM A2 Lite build).</li>
+    </ol>
+    <details class="faq">
+      <summary>What exactly does this change?</summary>
+      <p>Two name fields per model in the unit's main application: the name in the model list (Table "browser", 26 bytes) and the model's own name (16 bytes). Then the application's image CRC, its archive CRC32 and Fletcher sums, the payload MD5 and the file size fields. The file's length doesn't change, and no other byte does.</p>
+    </details>
+    <details class="faq">
+      <summary>Why is NAM A2 Lite locked?</summary>
+      <p>That slot (Xenomorph Fuzz Mono in stock firmware) is where the NAM A2 Lite build keeps its block, and its name there came from that build. The stereo Xenomorph Fuzz is still the real fuzz, so you can rename that one.</p>
+    </details>
+    <details class="faq">
+      <summary>What about the HX Stomp?</summary>
+      <p>Not yet. The Stomp's firmware keeps these tables at other addresses, so it needs its own mapping. The page tells you if you drop a Stomp file.</p>
+    </details>
+  </section>
+
+  <footer>
+    <span>Made to sit beside <a href="https://github.com/nocaseguy/hx-stomp-nam-lite">nocaseguy/hx-stomp-nam-lite</a>, whose firmware notes made this possible. Not affiliated with Line 6 or Yamaha Guitar Group. All product names are trademarks of their owners, used only to say what each model is based on.</span>
+  </footer>
+</div>
+
+<script>window.HX_NAMES={"stockShort":{"1132":"Kinky Boost","1355":"Deranged Mastr","628":"Minotaur","846":"Teemah!","1502":"Heir Apparent","1463":"Tone Sovereign","1533":"Alpaca Rouge","630":"Compulsive Drv","1364":"Dhyana Drive","1699":"Horizon Drive","296":"Valve Driver","640":"Top Secret OD","2208":"Prize Drive","653":"Scream 808","2032":"Pillars","302":"Hedgehog D9","922":"Stupor OD","1357":"Deez One Vintg","1359":"Deez One Mod","1803":"Ratatouille Dist","642":"Vermin Dist","2025":"Vital Dist","2030":"Vital Boost","749":"KWB","1541":"Legendary Drive","1697":"Swedish Chainsaw","645":"Arbitrator Fuzz","1710":"Pocket Fuzz","1545":"Bighorn Fuzz","620":"Triangle Fuzz","2198":"Dark Dove Fuzz","1708":"Ballistic Fuzz","307":"Industrial Fuzz","649":"Tycoctavia Fuzz","870":"Wringer Fuzz","1122":"Thrifter Fuzz","1516":"Xenomorph Fuzz","107":"Megaphone","737":"Bitcrusher","1368":"Ampeg Scrmblr","1458":"ZeroAmp BassDI","2275":"Regal Bass DI","930":"Obsidian 7000","995":"Clawthorn Drv","2809":"Kinky Boost","2996":"Deranged Mastr","2703":"Minotaur","2751":"Teemah!","3006":"Heir Apparent","3005":"Tone Sovereign","3008":"Alpaca Rouge","2704":"Compulsive Drv","2999":"Dhyana Drive","3023":"Horizon Drive","2506":"Valve Driver","2705":"Top Secret OD","3159":"Prize Drive","2709":"Scream 808","3090":"Pillars","2505":"Hedgehog D9","2768":"Stupor OD","2997":"Deez One Vintg","2998":"Deez One Mod","3060":"Ratatouille Dist","2706":"Vermin Dist","3088":"Vital Dist","3089":"Vital Boost","2745":"KWB","3011":"Legendary Drive","3024":"SwedishChainsw","2707":"Arbitrator Fuzz","3026":"Pocket Fuzz","3012":"Bighorn Fuzz","2702":"Triangle Fuzz","3157":"Dark Dove Fuzz","3025":"Ballistic Fuzz","2504":"Industrial Fuzz","2708":"Tycoctavia Fuzz","2762":"Wringer Fuzz","2799":"Thrifter Fuzz","3007":"Xenomorph Fuzz","2369":"Megaphone","2742":"Bitcrusher","3000":"Ampeg Scrmblr","3004":"ZeroAmp BassDI","3160":"Regal Bass DI","2771":"Obsidian 7000","2796":"Clawthorn Drv","1296":"Tube Drive","1274":"Screamer","1294":"Overdrive","1278":"Classic Dist","1286":"Heavy Dist","1280":"Colordrive","1276":"Buzz Saw","1282":"Facial Fuzz","1288":"Jumbo Fuzz","1284":"Fuzz Pi","1268":"Jet Fuzz","1292":"L6 Drive","1290":"L6 Distortion","1242":"Sub Oct Fuzz","1270":"Octave Fuzz","1821":"Bronze Master","1805":"Killer Z","670":"Deluxe Comp","668":"Red Squeeze","1316":"Kinky Comp","1980":"Ampeg Opto Comp","1507":"Rochester Comp","655":"LA Studio Comp","968":"3-Band Comp","698":"Noise Gate","214":"Hard Gate","1712":"Horizon Gate","961":"Autoswell","2215":"Feedbacker","2699":"Deluxe Comp","2701":"Red Squeeze","2985":"Kinky Comp","3085":"Ampeg Opto Comp","3010":"Rochester Comp","2700":"LA Studio Comp","2790":"3-Band Comp","2358":"Noise Gate","2357":"Hard Gate","3027":"Horizon Gate","2772":"Autoswell","1254":"Tube Comp","1252":"Red Comp","1248":"Blue Comp","1250":"Blue Comp Treb","1257":"Vetta Comp","1259":"Vetta Juice","1298":"Boost Comp","271":"Simple EQ","275":"Low/High Cut","1383":"Low/High Shelf","16":"Parametric","1370":"Tilt","74":"10 Band Graphic","896":"Cali Q Graphic","1658":"Acoustic Sim","2494":"Simple EQ","2501":"Low/High Cut","3002":"Low/High Shelf","2367":"Parametric","3001":"Tilt","2368":"10 Band Graphic","2765":"Cali Q Graphic","3013":"Acoustic Sim","695":"Optical Trem","277":"60s Bias Trem","747":"Tremolo","860":"Harmonic Trem","1170":"Bleat Chop Trem","510":"ScriptModPhase","1539":"Pebble Phaser","286":"Ubiquitous Vibe","2034":"FlexoVibe","840":"Deluxe Phaser","523":"Gray Flanger","531":"Harmonic Flngr","512":"Courtesan Flngr","804":"Dynamix Flngr","126":"Chorus","540":"70s Chorus","1026":"PlastiChorus","1976":"Ampeg Liquifier","2038":"4-Voice Chorus","559":"Bubble Vibrato","1717":"Retro Reel","1137":"Double Take","1616":"Poly Detune","491":"AM Ring Mod","2508":"Optical Trem","2507":"60s Bias Trem","2743":"Trem/Autopan","2761":"Harmonic Trem","2814":"Bleat Chop Trem","2628":"ScriptModPhase","3009":"Pebble Phaser","2509":"Ubiquitous Vibe","3091":"FlexoVibe","2750":"Deluxe Phaser","2630":"Gray Flanger","2631":"Harmonic Flngr","2629":"Courtesan Flngr","2746":"Dynamix Flngr","2331":"Chorus","2656":"70s Chorus","2797":"PlastiChorus","3084":"Ampeg Liquifier","2632":"Trinity Chorus","3094":"4-Voice Chorus","2660":"Bubble Vibrato","2604":"Vibe Rotary","2587":"122 Rotary","2602":"145 Rotary","3138":"Triple Rotary","3059":"Retro Reel","2810":"Double Take","2627":"AM Ring Mod","2606":"Pitch Ring Mod","2826":"Pattern Trem","2821":"Panner","2926":"Bias Tremolo","2824":"Opto Tremolo","2815":"Script Phase","2960":"Panned Phaser","2828":"Barberpole","2950":"Dual Phaser","1305":"U-Vibe","2936":"Phaser","1311":"Pitch Vibrato","2966":"Dimension","2991":"Analog Chorus","2928":"Tri Chorus","2948":"Analog Flanger","2983":"Jet Flanger","2980":"AC Flanger","2978":"80A Flanger","2830":"Freq Shift","2817":"Ring Modulator","2952":"Rotary Drum","2954":"Rotary Speaker","1831":"Tape Eater","1984":"Warble Matic","1986":"Random S&H","3087":"Sweeper","602":"Simple Delay","595":"Mod/Cho Echo","568":"Sweep Echo","324":"Ducked Delay","735":"Reverse Delay","908":"Vintage Digital","924":"Vintage Swell","918":"Pitch Echo","684":"Transistor Tape","1147":"Cosmos Echo","616":"Bucket Brigade","604":"Adriatic Delay","928":"Adriatic Swell","618":"Elephant Man","1328":"Multi Pass","1835":"Heliosphere","1776":"Poly Sustain","1784":"Glitch Delay","1742":"Euclidean Delay","1874":"ADT","1845":"Crisscross","1910":"Tesselator","1929":"Ratchet","2694":"Simple Delay","2693":"Mod/Cho Echo","2721":"Dual Delay","2691":"Multitap 4","2510":"Multitap 6","2353":"Ping Pong","2661":"Sweep Echo","2578":"Ducked Delay","2720":"Reverse Delay","2766":"Vintage Digital","2769":"Vintage Swell","2767":"Pitch Echo","2503":"Transistor Tape","2813":"Cosmos Echo","2664":"Harmony Delay","2697":"Bucket Brigade","2695":"Adriatic Delay","2770":"Adriatic Swell","2698":"Elephant Man","2988":"Multi Pass","3061":"Heliosphere","3057":"Glitch Delay","3055":"Euclidean Delay","3069":"ADT","3062":"Crisscross","3079":"Tesselator","3083":"Ratchet","2871":"Ping Pong","2902":"Dynamic","2908":"Stereo","2904":"Digital","2906":"Dig w/Mod","1301":"Reverse","2898":"Lo Res","2869":"Tube Echo","2867":"Tape Echo","2866":"Sweep Echo","2863":"Echo Platter","2922":"Analog Echo","2924":"Analog w/Mod","2917":"Auto-Vol Echo","2872":"Multi-Head","1827":"Bubble Echo","1988":"Phaze Eko","1755":"Dynamic Hall","1990":"Dynamic Plate","2001":"Dynamic Room","2135":"Dynamic Ambience","2200":"Dynamic Bloom","2007":"Shimmer","1732":"Hot Springs","2286":"Nonlinear","1318":"Glitz","1353":"Ganymede","1334":"Searchlights","1338":"Plateaux","1351":"Double Tank","3054":"Dynamic Hall","3081":"Dynamic Plate","3086":"Dynamic Room","3135":"Dynamic Ambience","3158":"Dynamic Bloom","3082":"Shimmer","3056":"Hot Springs","3137":"Nonlinear","2987":"Glitz","2995":"Ganymede","2986":"Searchlights","2989":"Plateaux","2990":"Double Tank","2342":"Plate","2344":"Room","2496":"Chamber","2338":"Hall","2498":"Echo","2499":"Tile","2336":"Cave","2502":"Ducking","2340":"Octo","2334":"'63 Spring","2710":"Spring","2346":"Particle Verb","446":"Pitch Wham","359":"Twin Harmony","853":"Simple Pitch","767":"Dual Pitch","2173":"Boctaver","1568":"Poly Pitch","1547":"Poly Wham","1614":"Poly Capo","1793":"12-String","1028":"3 Note Gen","1095":"4 OSC Generator","2584":"Pitch Wham","2581":"Twin Harmony","2758":"Simple Pitch","2753":"Dual Pitch","3136":"Boctaver","2371":"3 OSC Synth","2798":"3 Note Gen","2773":"4 OSC Generator","1263":"Bass Octaver","1182":"Smart Harmony","1235":"Octi Synth","1222":"Synth O Matic","1239":"Attack Synth","1217":"Synth String","1237":"Growler","1974":"Buzz Wave","1972":"Rez Synth","1940":"Seismik Synth","1938":"Analog Synth","1936":"Synth Lead","1934":"String Theory","1931":"Synth FX","1942":"Saturn 5 RingMod","1954":"Synth Harmony","1944":"Double Bass","458":"Mutant Filter","476":"Mystery Filter","789":"Autofilter","1385":"AshevillePattrn","2585":"Mutant Filter","2586":"Mystery Filter","2752":"Autofilter","3003":"AshevillePattrn","1209":"Voice Box","1191":"V Tron","2857":"Q Filter","2847":"Seeker","2859":"Obi Wah","2833":"Tron Up","2835":"Tron Down","2837":"Throbber","2845":"Slow Filter","2842":"Spin Cycle","2861":"Comet Trails","356":"UK Wah 846","353":"Teardrop 310","724":"Fassel","730":"Weeper","718":"Chrome","710":"Chrome Custom","726":"Throaty","728":"Vetta Wah","720":"Colorful","722":"Conductor","2308":"Teardrop Bass Q","2580":"UK Wah 846","2579":"Teardrop 310","2716":"Fassel","2719":"Weeper","2713":"Chrome","2712":"Chrome Custom","2717":"Throaty","2718":"Vetta Wah","2714":"Colorful","2715":"Conductor","3161":"Teardrop Bass Q","700":"1024-sample IR","709":"2048-sample IR","3095":"1024-sample IR","199":"Volume Pedal","273":"Gain","2366":"Volume Pedal","2495":"Gain","2359":"Pan","2800":"Stereo Width","3015":"Stereo Imager","235":"Send 1","244":"Send 2","250":"Return 1","256":"Return 2","262":"FX Loop 1","265":"FX Loop 2","2478":"Send 1/2","2484":"Return 1/2","2490":"FX Loop 1/2","3889":"6 Sw Looper","3916":"1 Sw Looper","3933":"Shuffling Looper","3913":"6 Sw Looper","3917":"1 Sw Looper","3930":"Shuffling Looper"},"stockLong":{"1132":"Kinky Boost","1355":"Deranged Master","628":"Minotaur","846":"Teemah!","1502":"Heir Apparent","1463":"Tone Sovereign","1533":"Alpaca Rouge","630":"Compulsive Drive","1364":"Dhyana Drive","1699":"Horizon Drive","296":"Valve Driver","640":"Top Secret OD","2208":"Prize Drive","653":"Scream 808","2032":"Pillars","302":"Hedgehog D9","922":"Stupor OD","1357":"Deez One Vintage","1359":"Deez One Mod","1803":"Ratatouille Dist","642":"Vermin Dist","2025":"Vital Dist","2030":"Vital Boost","749":"KWB","1541":"Legendary Drive","1697":"Swedish Chainsaw","645":"Arbitrator Fuzz","1710":"Pocket Fuzz","1545":"Bighorn Fuzz","620":"Triangle Fuzz","2198":"Dark Dove Fuzz","1708":"Ballistic Fuzz","307":"Industrial Fuzz","649":"Tycoctavia Fuzz","870":"Wringer","1122":"Thrifter Fuzz","1516":"Xenomorph Fuzz","107":"Megaphone","737":"Bitcrusher","1368":"Ampeg Scrambler","1458":"ZeroAmp Bass DI","2275":"Regal Bass DI","930":"Obsidian 7000","995":"Clawthorn Drive","2809":"Kinky Boost","2996":"Deranged Master","2703":"Minotaur","2751":"Teemah!","3006":"Heir Apparent","3005":"Tone Sovereign","3008":"Alpaca Rouge","2704":"Compulsive Drive","2999":"Dhyana Drive","3023":"Horizon Drive","2506":"Valve Driver","2705":"Top Secret OD","3159":"Prize Drive","2709":"Scream 808","3090":"Pillars","2505":"Hedgehog D9","2768":"Stupor OD","2997":"Deez One Vintage","2998":"Deez One Mod","3060":"Ratatouille Dist","2706":"Vermin Dist","3088":"Vital Dist","3089":"Vital Boost","2745":"KWB","3011":"Legendary Drive","3024":"Swedish Chainsaw","2707":"Arbitrator Fuzz","3026":"Pocket Fuzz","3012":"Bighorn Fuzz","2702":"Triangle Fuzz","3157":"Dark Dove Fuzz","3025":"Ballistic Fuzz","2504":"Industrial Fuzz","2708":"Tycoctavia Fuzz","2762":"Wringer Fuzz","2799":"Thrifter Fuzz","3007":"Xenomorph Fuzz","2369":"Megaphone","2742":"Bitcrusher","3000":"Ampeg Scrambler","3004":"ZeroAmp Bass DI","3160":"Regal Bass DI","2771":"Obsidian 7000","2796":"Clawthorn Drive","1296":"Tube Drive","1274":"Screamer","1294":"Overdrive","1278":"Classic Dist","1286":"Heavy Dist","1280":"Colordrive","1276":"Buzz Saw","1282":"Facial Fuzz","1288":"Jumbo Fuzz","1284":"Fuzz Pi","1268":"Jet Fuzz","1292":"L6 Drive","1290":"L6 Distortion","1242":"Sub Oct Fuzz","1270":"Octave Fuzz","1821":"Bronze Master","1805":"Killer Z","670":"Deluxe Comp","668":"Red Squeeze","1316":"Kinky Comp","1980":"Ampeg Opto Comp","1507":"Rochester Comp","655":"LA Studio Comp","968":"3-Band Comp","698":"Noise Gate","214":"Hard Gate","1712":"Horizon Gate","961":"Autoswell","2215":"Feedbacker","2699":"Deluxe Comp","2701":"Red Squeeze","2985":"Kinky Comp","3085":"Ampeg Opto Comp","3010":"Rochester Comp","2700":"LA Studio Comp","2790":"3-Band Comp","2358":"Noise Gate","2357":"Hard Gate","3027":"Horizon Gate","2772":"Autoswell","1254":"Tube Comp","1252":"Red Comp","1248":"Blue Comp","1250":"Blue Comp Treb","1257":"Vetta Comp","1259":"Vetta Juice","1298":"Boost Comp","271":"Simple EQ","275":"Low and High Cut","1383":"Low/High Shelf","16":"Parametric","1370":"Tilt","74":"10 Band Graphic","896":"Cali Q Graphic","1658":"Acoustic Sim","2494":"Simple EQ","2501":"Low and High Cut","3002":"Low/High Shelf","2367":"Parametric","3001":"Tilt","2368":"10 Band Graphic","2765":"Cali Q Graphic","3013":"Acoustic Sim","695":"Optical Trem","277":"60s Bias Trem","747":"Tremolo","860":"Harmonic Tremolo","1170":"Bleat Chop Trem","510":"Script Mod Phase","1539":"Pebble Phaser","286":"Ubiquitous Vibe","2034":"FlexoVibe","840":"Deluxe Phaser","523":"Gray Flanger","531":"Harmonic Flanger","512":"Courtesan Flange","804":"Dynamix Flanger","126":"Chorus","540":"70s Chorus","1026":"PlastiChorus","1976":"Ampeg Liquifier","2038":"4-Voice Chorus","559":"Bubble Vibrato","1717":"Retro Reel","1137":"Double Take","1616":"Poly Detune","491":"AM Ring Mod","2508":"Optical Trem","2507":"60s Bias Trem","2743":"Tremolo/Autopan","2761":"Harmonic Tremolo","2814":"Bleat Chop Trem","2628":"Script Mod Phase","3009":"Pebble Phaser","2509":"Ubiquitous Vibe","3091":"FlexoVibe","2750":"Deluxe Phaser","2630":"Gray Flanger","2631":"Harmonic Flanger","2629":"Courtesan Flange","2746":"Dynamix Flanger","2331":"Chorus","2656":"70s Chorus","2797":"PlastiChorus","3084":"Ampeg Liquifier","2632":"Trinity Chorus","3094":"4-Voice Chorus","2660":"Bubble Vibrato","2604":"Vibe Rotary","2587":"122 Rotary","2602":"145 Rotary","3138":"Triple Rotary","3059":"Retro Reel","2810":"Double Take","2627":"AM Ring Mod","2606":"Pitch Ring Mod","2826":"Pattern Tremolo","2821":"Panner","2926":"Bias Tremolo","2824":"Opto Tremolo","2815":"Script Phase","2960":"Panned Phaser","2828":"Barberpole","2950":"Dual Phaser","1305":"U-Vibe","2936":"Phaser","1311":"Pitch Vibrato","2966":"Dimension","2991":"Analog Chorus","2928":"Tri Chorus","2948":"Analog Flanger","2983":"Jet Flanger","2980":"AC Flanger","2978":"80A Flanger","2830":"Frequency Shift","2817":"Ring Modulator","2952":"Rotary Drum","2954":"Rotary Drum/Horn","1831":"Tape Eater","1984":"Warble  Matic","1986":"Random S/H","3087":"Sweeper","602":"Simple Delay","595":"Mod/Chorus Echo","568":"Sweep Echo","324":"Ducked Delay","735":"Reverse Delay","908":"Vintage Digital","924":"Vintage Swell","918":"Pitch Echo","684":"Transistor Tape","1147":"Cosmos Echo","616":"Bucket Brigade","604":"Adriatic Delay","928":"Adriatic Swell","618":"Elephant Man","1328":"Multi Pass","1835":"Heliosphere","1776":"Poly Sustain","1784":"Glitch Delay","1742":"Euclidean Delay","1874":"ADT","1845":"Crisscross","1910":"Tesselator","1929":"Ratchet","2694":"Simple Delay","2693":"Mod/Chorus Echo","2721":"Dual Delay","2691":"Multitap 4","2510":"Multitap 6","2353":"Ping Pong","2661":"Sweep Echo","2578":"Ducked Delay","2720":"Reverse Delay","2766":"Vintage Digital","2769":"Vintage Swell","2767":"Pitch Echo","2503":"Transistor Tape","2813":"Cosmos Echo","2664":"Harmony Delay","2697":"Bucket Brigade","2695":"Adriatic Delay","2770":"Adriatic Swell","2698":"Elephant Man","2988":"Multi Pass","3061":"Heliosphere","3057":"Glitch Delay","3055":"Euclidean Delay","3069":"ADT","3062":"Crisscross","3079":"Tesselator","3083":"Ratchet","2871":"Ping Pong","2902":"Dynamic","2908":"Stereo","2904":"Digital","2906":"Dig w/Mod","1301":"Reverse","2898":"Low Res","2869":"Tube Echo","2867":"Tape Echo","2866":"Sweep Echo","2863":"Echo Platter","2922":"Analog Echo","2924":"Analog w/Mod","2917":"Auto-Volume Echo","2872":"Multi-Head","1827":"Bubble Echo","1988":"Phaze Eko","1755":"Dynamic Hall","1990":"Dynamic Plate","2001":"Dynamic Room","2135":"Dynamic Ambience","2200":"Dynamic Bloom","2007":"Shimmer","1732":"Hot Springs","2286":"Nonlinear","1318":"Glitz","1353":"Ganymede","1334":"Searchlights","1338":"Plateaux","1351":"Double Tank","3054":"Dynamic Hall","3081":"Dynamic Plate","3086":"Dynamic Room","3135":"Dynamic Ambience","3158":"Dynamic Bloom","3082":"Shimmer","3056":"Hot Springs","3137":"Nonlinear","2987":"Glitz","2995":"Ganymede","2986":"Searchlights","2989":"Plateaux","2990":"Double Tank","2342":"Plate","2344":"Room","2496":"Chamber","2338":"Hall","2498":"Echo","2499":"Tile","2336":"Cave","2502":"Ducking","2340":"Octo","2334":"'63 Spring","2710":"Spring","2346":"Particle Verb","446":"Pitch Wham","359":"Twin Harmony","853":"Simple Pitch","767":"Dual Pitch","2173":"Boctaver","1568":"Poly Pitch","1547":"Poly Wham","1614":"Poly Capo","1793":"12-String","1028":"3 Note Generator","1095":"4 OSC Generator","2584":"Pitch Wham","2581":"Twin Harmony","2758":"Simple Pitch","2753":"Dual Pitch","3136":"Boctaver","2371":"3 OSC Synth","2798":"3 Note Generator","2773":"4 OSC Generator","1263":"Bass Octaver","1182":"Smart Harmony","1235":"Octi Synth","1222":"Synth O Matic","1239":"Attack Synth","1217":"Synth String","1237":"Growler","1974":"Buzz Wave","1972":"Rez Synth","1940":"Seismik Synth","1938":"Analog Synth","1936":"Synth Lead","1934":"String Theory","1931":"Synth FX","1942":"Saturn 5 RingMod","1954":"Synth Harmony","1944":"Double Bass","458":"Mutant Filter","476":"Mystery Filter","789":"Autofilter","1385":"Asheville Pattrn","2585":"Mutant Filter","2586":"Mystery Filter","2752":"Autofilter","3003":"Asheville Pattrn","1209":"Voice Box","1191":"V Tron","2857":"Q Filter","2847":"Seeker","2859":"Obi Wah","2833":"Tron Up","2835":"Tron Down","2837":"Throbber","2845":"Slow Filter","2842":"Spin Cycle","2861":"Comet Trails","356":"UK Wah 846","353":"Teardrop 310","724":"Fassel","730":"Weeper","718":"Chrome","710":"Chrome Custom","726":"Throaty","728":"Vetta Wah","720":"Colorful","722":"Conductor","2308":"Teardrop Bass Q","2580":"UK Wah 846","2579":"Teardrop 310","2716":"Fassel","2719":"Weeper","2713":"Chrome","2712":"Chrome Custom","2717":"Throaty","2718":"Vetta Wah","2714":"Colorful","2715":"Conductor","3161":"Teardrop Bass Q","700":"IR","709":"IR","3095":"IR","199":"Volume Pedal","273":"Gain","2366":"Volume Pedal","2495":"Gain","2359":"Pan","2800":"Stereo Width","3015":"Stereo Imager","235":"Send 1","244":"Send 2","250":"Return 1","256":"Return 2","262":"FX Loop 1","265":"FX Loop 2","2478":"Send 1/2","2484":"Return 1/2","2490":"FX Loop 1/2","3889":"Looper Mono","3916":"Looper Mono","3933":"Shuffling Looper","3913":"Looper Stereo","3917":"Looper Stereo","3930":"Shuffling Looper"},"proposed":{"1132":"Xotic EP Boost","2809":"Xotic EP Boost","1355":"Rangemaster","2996":"Rangemaster","628":"Klon Centaur","2703":"Klon Centaur","846":"Timmy OD","2751":"Timmy OD","1502":"Prince of Tone","3006":"Prince of Tone","1463":"King of Tone","3005":"King of Tone","1533":"Red Llama Mod","3008":"Red Llama Mod","630":"Fulltone OCD","2704":"Fulltone OCD","1364":"Zendrive","2999":"Zendrive","1699":"Precision Drive","3023":"Precision Drive","296":"Tube Driver","2506":"Tube Driver","640":"DOD OD-250","2705":"DOD OD-250","2208":"Nobels ODR-1","3159":"Nobels ODR-1","653":"Ibanez TS808","2709":"Ibanez TS808","2032":"EQD Plumes","3090":"EQD Plumes","302":"Maxon SD9","2505":"Maxon SD9","922":"Boss SD-1","2768":"Boss SD-1","1357":"Boss DS-1 MIJ","2997":"Boss DS-1 MIJ","1359":"DS-1 Keeley","2998":"DS-1 Keeley","1803":"RAT LM308","3060":"RAT LM308","642":"ProCo RAT","2706":"ProCo RAT","2025":"EQD Life Dist","3088":"EQD Life Dist","2030":"EQD Life Boost","3089":"EQD Life Boost","749":"Kowloon Bunny","2745":"Kowloon Bunny","1541":"Carvin VLD1","3011":"Carvin VLD1","1697":"Boss HM-2","3024":"Boss HM-2","645":"Fuzz Face","2707":"Fuzz Face","1710":"Jordan BossTone","3026":"Jordan BossTone","1545":"Ram's Head Muff","3012":"Ram's Head Muff","620":"Big Muff Pi","2702":"Big Muff Pi","2198":"Russian Muff","3157":"Russian Muff","1708":"Euthymia ICBM","3025":"Euthymia ICBM","307":"ZVex Fuzz Fact","2504":"ZVex Fuzz Fact","649":"Octavia","2708":"Octavia","870":"Boss FZ-2 Mod","2762":"Boss FZ-2 Mod","3007":"Subdecay HA","1368":"Ampeg Scrambler","3000":"Ampeg Scrambler","1458":"SansAmp BassDI","3004":"SansAmp BassDI","2275":"Noble Bass DI","3160":"Noble Bass DI","930":"Darkglass B7K","2771":"Darkglass B7K","995":"Battering Ram","2796":"Battering Ram","1274":"Tube Screamer","1294":"DOD 250","1278":"RAT Classic","1286":"Metal Zone","1280":"Colorsound OD","1276":"Maestro Fuzz","1282":"Arbiter Fuzz","1288":"Tone Bender","1284":"EHX Big Muff","1268":"Jet Phaser","1292":"Colorsound Mod","1242":"PAiA Roctave","1270":"Tyco Octavia","1821":"Brassmaster","1805":"Boss MT-2","668":"Dyna Comp","2701":"Dyna Comp","1316":"Xotic SP Comp","2985":"Xotic SP Comp","1507":"Ashly CLX-52","3010":"Ashly CLX-52","655":"LA-2A Studio","2700":"LA-2A Studio","1712":"Precision Gate","3027":"Precision Gate","1254":"LA-2A Tube","1252":"MXR Dyna Comp","1248":"Boss CS-1","1250":"CS-1 Treble","1298":"MXR Micro Amp","74":"MXR 10-Band","2368":"MXR 10-Band","896":"Mesa Mark IV EQ","2765":"Mesa Mark IV EQ","695":"Fender Opto","2508":"Fender Opto","277":"Vox AC15 Trem","2507":"Vox AC15 Trem","747":"Boss PN-2","2743":"Boss PN-2","1170":"Goatkeeper","2814":"Goatkeeper","510":"MXR Phase 90","2628":"MXR Phase 90","1539":"Small Stone","3009":"Small Stone","286":"Uni-Vibe","2509":"Uni-Vibe","523":"MXR 117 Flanger","2630":"MXR 117 Flanger","531":"A/DA Flanger","2631":"A/DA Flanger","512":"EHX Deluxe EM","2629":"EHX Deluxe EM","540":"Boss CE-1","2656":"Boss CE-1","1026":"Arion SCH-Z Mod","2797":"Arion SCH-Z Mod","2632":"Tri-Stereo Cho","559":"Boss VB-2","2660":"Boss VB-2","2604":"Vibratone","2587":"Leslie 122","2602":"Leslie 145","3138":"Yamaha RA-200","2926":"1960 AC-15 Trem","2824":"'64 Deluxe Trem","2815":"Phase 90 Script","2960":"Flying Pan","2950":"Mu-Tron BiPhase","1305":"Shin-ei UniVibe","2936":"Phase 90","1311":"VB-2 Vibrato","2966":"Dimension D","2991":"CE-1 Chorus","2928":"Dytronics Tri","2948":"MXR Flanger","2983":"A/DA Jet Flange","2980":"MXR AC Flanger","2978":"A/DA 80A Flange","2952":"Vibratone Drum","2954":"Leslie 145 D/H","324":"TC 2290 Ducked","2578":"TC 2290 Ducked","684":"Echoplex EP-3","2503":"Echoplex EP-3","1147":"Space Echo 201","2813":"Space Echo 201","616":"Boss DM-2","2697":"Boss DM-2","604":"DM-2 Adrian Mod","2695":"DM-2 Adrian Mod","618":"Memory Man","2698":"Memory Man","2871":"TC 2290 PngPong","2902":"TC 2290 Dynamic","2869":"Echoplex EP-1","2867":"EP-3 Tape Echo","2863":"Binson EchoRec","2922":"DM-2 Analog","2924":"Deluxe Mem Man","2872":"Space Echo 101","446":"DigiTech Whammy","2584":"DigiTech Whammy","359":"Eventide H3000","2581":"Eventide H3000","2173":"Boss OC-2","3136":"Boss OC-2","1263":"EBS OctaBass","1182":"H3000 Harmony","1239":"Korg X911","1217":"Roland GR700","458":"Mu-Tron III","2585":"Mu-Tron III","476":"Korg A3","2586":"Korg A3","1385":"Moog MuRF","3003":"Moog MuRF","1191":"Mu-Tron III Lgcy","2847":"ZVex Seek Wah","2859":"Oberheim S&H","2833":"Mu-Tron Up","2835":"Mu-Tron Down","2837":"Filter Factory","2842":"Anderton Wah","356":"Vox V846","2580":"Vox V846","353":"Cry Baby 310","2579":"Cry Baby 310","724":"CryBaby Super","2716":"CryBaby Super","730":"Arbiter CryBaby","2719":"Arbiter CryBaby","718":"Vox V847","2713":"Vox V847","710":"Vox V847 Mod","2712":"Vox V847 Mod","726":"RMC Real McCoy","2717":"RMC Real McCoy","720":"Colorsound Wah","2714":"Colorsound Wah","722":"Maestro Boomrng","2715":"Maestro Boomrng","2308":"Bass 105Q Mod","3161":"Bass 105Q Mod"},"basedOn":{"1132":"Xotic EP Booster","2809":"Xotic EP Booster","1355":"Dallas Rangemaster","2996":"Dallas Rangemaster","628":"Klon Centaur","2703":"Klon Centaur","846":"Paul Cochrane Timmy","2751":"Paul Cochrane Timmy","1502":"Analogman Prince of Tone","3006":"Analogman Prince of Tone","1463":"Analogman King of Tone","3005":"Analogman King of Tone","1533":"Way Huge Red Llama (modded)","3008":"Way Huge Red Llama (modded)","630":"Fulltone OCD","2704":"Fulltone OCD","1364":"Hermida Zendrive","2999":"Hermida Zendrive","1699":"Horizon Precision Drive","3023":"Horizon Precision Drive","296":"Chandler Tube Driver","2506":"Chandler Tube Driver","640":"DOD OD-250","2705":"DOD OD-250","2208":"Nobels ODR-1","3159":"Nobels ODR-1","653":"Ibanez TS808 Tube Screamer","2709":"Ibanez TS808 Tube Screamer","2032":"EarthQuaker Plumes","3090":"EarthQuaker Plumes","302":"Maxon SD9","2505":"Maxon SD9","922":"BOSS SD-1","2768":"BOSS SD-1","1357":"BOSS DS-1 (Made in Japan)","2997":"BOSS DS-1 (Made in Japan)","1359":"BOSS DS-1 (Keeley modded)","2998":"BOSS DS-1 (Keeley modded)","1803":"Pro Co RAT (LM308)","3060":"Pro Co RAT (LM308)","642":"Pro Co RAT","2706":"Pro Co RAT","2025":"EarthQuaker Life (distortion)","3088":"EarthQuaker Life (distortion)","2030":"EarthQuaker Life (boost)","3089":"EarthQuaker Life (boost)","749":"Benadrian Kowloon Walled Bunny","2745":"Benadrian Kowloon Walled Bunny","1541":"Carvin VLD1 Legacy Drive","3011":"Carvin VLD1 Legacy Drive","1697":"BOSS HM-2 (MIJ)","3024":"BOSS HM-2 (MIJ)","645":"Arbiter Fuzz Face","2707":"Arbiter Fuzz Face","1710":"Jordan Boss Tone","3026":"Jordan Boss Tone","1545":"'73 EHX Ram's Head Big Muff","3012":"'73 EHX Ram's Head Big Muff","620":"EHX Big Muff Pi","2702":"EHX Big Muff Pi","2198":"EHX Russian Big Muff","3157":"EHX Russian Big Muff","1708":"Euthymia ICBM","3025":"Euthymia ICBM","307":"Z.Vex Fuzz Factory","2504":"Z.Vex Fuzz Factory","649":"Tycobrahe Octavia","2708":"Tycobrahe Octavia","870":"Garbage's modded BOSS FZ-2","2762":"Garbage's modded BOSS FZ-2","1122":"Line 6 Original","2799":"Line 6 Original","3007":"Subdecay Harmonic Antagonizer","107":"Megaphone","2369":"Megaphone","737":"Line 6 Original","2742":"Line 6 Original","1368":"Ampeg Scrambler","3000":"Ampeg Scrambler","1458":"Tech 21 SansAmp Bass Driver","3004":"Tech 21 SansAmp Bass Driver","2275":"Noble Preamp Bass DI","3160":"Noble Preamp Bass DI","930":"Darkglass B7K Ultra","2771":"Darkglass B7K Ultra","995":"Wounded Paw Battering Ram","2796":"Wounded Paw Battering Ram","1296":"Chandler Tube Driver","1274":"Ibanez Tube Screamer","1294":"DOD Overdrive/Preamp 250","1278":"Pro Co RAT","1286":"BOSS Metal Zone","1280":"Colorsound Overdriver","1276":"Maestro Fuzz Tone","1282":"Arbiter Fuzz Face","1288":"Vox Tone Bender","1284":"EHX Big Muff Pi","1268":"Roland Jet Phaser","1292":"Colorsound Overdriver (modded)","1290":"Line 6 Original","1242":"PAiA Roctave Divider","1270":"Tycobrahe Octavia","1821":"Maestro Bass Brassmaster","1805":"BOSS Metal Zone MT-2","668":"MXR Dyna Comp","2701":"MXR Dyna Comp","1316":"Xotic SP Compressor","2985":"Xotic SP Compressor","1507":"Ashly CLX-52","3010":"Ashly CLX-52","655":"Teletronix LA-2A","2700":"Teletronix LA-2A","1712":"Horizon Precision Drive gate","3027":"Horizon Precision Drive gate","1254":"Teletronix LA-2A","1252":"MXR Dyna Comp","1248":"BOSS CS-1","1250":"BOSS CS-1 (Treble on)","1298":"MXR Micro Amp","74":"MXR 10-Band Graphic EQ","2368":"MXR 10-Band Graphic EQ","896":"Mesa/Boogie Mark IV EQ","2765":"Mesa/Boogie Mark IV EQ","695":"Fender optical tremolo","2508":"Fender optical tremolo","277":"Vox AC-15 Tremolo","2507":"Vox AC-15 Tremolo","747":"BOSS PN-2","2743":"BOSS PN-2","1170":"Lightfoot Labs Goatkeeper","2814":"Lightfoot Labs Goatkeeper","510":"MXR Phase 90","2628":"MXR Phase 90","1539":"EHX Small Stone","3009":"EHX Small Stone","286":"Shin-ei Uni-Vibe","2509":"Shin-ei Uni-Vibe","523":"MXR 117 Flanger","2630":"MXR 117 Flanger","531":"A/DA Flanger","2631":"A/DA Flanger","512":"EHX Deluxe Electric Mistress","2629":"EHX Deluxe Electric Mistress","540":"BOSS CE-1","2656":"BOSS CE-1","1026":"Modded Arion SCH-Z","2797":"Modded Arion SCH-Z","2632":"Dytronics Tri-Stereo Chorus","559":"BOSS VB-2","2660":"BOSS VB-2","2604":"Fender Vibratone","2587":"Leslie 122","2602":"Leslie 145","3138":"Yamaha RA-200","2926":"1960 Vox AC-15 Tremolo","2824":"1964 Fender Deluxe Reverb","2815":"MXR Phase 90 (script logo)","2960":"Ibanez Flying Pan","2950":"Mu-Tron Bi-Phase","1305":"Shin-ei Uni-Vibe","2936":"MXR Phase 90","1311":"BOSS VB-2","2966":"Roland Dimension D","2991":"BOSS CE-1","2928":"Dytronics Tri-Stereo Chorus","2948":"MXR Flanger","2983":"A/DA Flanger","2980":"MXR Flanger","2978":"A/DA Flanger","2952":"Fender Vibratone","2954":"Leslie 145","324":"TC Electronic 2290","2578":"TC Electronic 2290","684":"Maestro Echoplex EP-3","2503":"Maestro Echoplex EP-3","1147":"Roland RE-201 Space Echo","2813":"Roland RE-201 Space Echo","616":"BOSS DM-2","2697":"BOSS DM-2","604":"BOSS DM-2 w/ Adrian Mod","2695":"BOSS DM-2 w/ Adrian Mod","618":"EHX Deluxe Memory Man","2698":"EHX Deluxe Memory Man","2871":"TC Electronic 2290","2902":"TC Electronic 2290","2869":"Maestro Echoplex EP-1","2867":"Maestro Echoplex EP-3","2863":"Binson EchoRec","2922":"BOSS DM-2","2924":"EHX Deluxe Memory Man","2872":"Roland RE-101 Space Echo","446":"DigiTech Whammy","2584":"DigiTech Whammy","359":"Eventide H3000","2581":"Eventide H3000","2173":"BOSS OC-2 Octaver","3136":"BOSS OC-2 Octaver","1263":"EBS OctaBass","1182":"Eventide H3000","1239":"Korg X911 Guitar Synth","1217":"Roland GR700 Guitar Synth","458":"Musitronics Mu-Tron III","2585":"Musitronics Mu-Tron III","476":"Korg A3","2586":"Korg A3","1385":"Moog MF-105M MuRF","3003":"Moog MF-105M MuRF","1191":"Musitronics Mu-Tron III","2847":"Z.Vex Seek Wah","2859":"Oberheim S&H filter","2833":"Mu-Tron III (up)","2835":"Mu-Tron III (down)","2837":"Electrix Filter Factory","2842":"Craig Anderton's Wah/Anti-Wah","356":"Vox V846","2580":"Vox V846","353":"Dunlop Cry Baby Fasel 310","2579":"Dunlop Cry Baby Fasel 310","724":"Dunlop Cry Baby Super","2716":"Dunlop Cry Baby Super","730":"Arbiter Cry Baby","2719":"Arbiter Cry Baby","718":"Vox V847","2713":"Vox V847","710":"Modded Vox V847","2712":"Modded Vox V847","726":"RMC Real McCoy 1","2717":"RMC Real McCoy 1","720":"Colorsound Wah-fuzz","2714":"Colorsound Wah-fuzz","722":"Maestro Boomerang","2715":"Maestro Boomerang","2308":"Modified Dunlop 105Q","3161":"Modified Dunlop 105Q","1516":"NAM A2 Lite lives here (was Xenomorph Fuzz Mono)"}};
+</script>
+<script>// HX model renamer core: parse a Line 6 .hxf, list model names, rewrite them, rebuild with every checksum fixed.
+// Works in browsers (CompressionStream) and Node 18+.
+(function (root) {
+  "use strict";
+
+  // ---------- small helpers ----------
+  const be32 = (b, o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+  const le32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+  const wbe32 = (b, o, v) => { b[o] = v >>> 24; b[o + 1] = v >>> 16; b[o + 2] = v >>> 8; b[o + 3] = v; };
+  const wle32 = (b, o, v) => { b[o] = v; b[o + 1] = v >>> 8; b[o + 2] = v >>> 16; b[o + 3] = v >>> 24; };
+  const tag = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
+
+  function swap32(src) {               // big-endian words <-> little-endian words (trailing bytes kept)
+    const out = new Uint8Array(src);
+    const n = src.length & ~3;
+    for (let i = 0; i < n; i += 4) { out[i] = src[i + 3]; out[i + 1] = src[i + 2]; out[i + 2] = src[i + 1]; out[i + 3] = src[i]; }
+    return out;
+  }
+
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b, s = 0, e = b.length) { let c = 0xffffffff; for (let i = s; i < e; i++) c = CRC_T[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+
+  function fletcher(b, s, e) {        // a += w; b += a over big-endian words, mod 2^32
+    let a = 0, h = 0;
+    for (let i = s; i < e; i += 4) { a = (a + be32(b, i)) >>> 0; h = (h + a) >>> 0; }
+    return [a, h];
+  }
+
+  // MD5 (RFC 1321)
+  function md5(bytes) {
+    const K = new Uint32Array(64), S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+    for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+    const n = bytes.length, padLen = ((n + 8) >>> 6) + 1 << 6, m = new Uint8Array(padLen);
+    m.set(bytes); m[n] = 0x80;
+    const bits = n * 8; wle32(m, padLen - 8, bits >>> 0); wle32(m, padLen - 4, Math.floor(bits / 4294967296));
+    let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+    const M = new Uint32Array(16);
+    for (let off = 0; off < padLen; off += 64) {
+      for (let i = 0; i < 16; i++) M[i] = le32(m, off + i * 4);
+      let A = a0, B = b0, C = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) { F = (B & C) | (~B & D); g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) & 15; }
+        else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) & 15; }
+        else { F = C ^ (B | ~D); g = (7 * i) & 15; }
+        F = (F + A + K[i] + M[g]) >>> 0;
+        A = D; D = C; C = B;
+        const s = S[(i >> 4) * 4 + (i & 3)];
+        B = (B + ((F << s) | (F >>> (32 - s)))) >>> 0;
+      }
+      a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+    }
+    const out = new Uint8Array(16); wle32(out, 0, a0); wle32(out, 4, b0); wle32(out, 8, c0); wle32(out, 12, d0);
+    return out;
+  }
+  const hex = (u8) => Array.from(u8, (x) => x.toString(16).padStart(2, "0")).join("");
+
+  async function pipe(u8, stream) {
+    const s = new Blob([u8]).stream().pipeThrough(stream);
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  }
+  const inflate = (u8) => pipe(u8, new DecompressionStream("deflate"));   // "deflate" = zlib format
+  const deflate = (u8) => pipe(u8, new CompressionStream("deflate"));
+
+  // ---------- known files ----------
+  const KNOWN_MD5 = {
+    "7c2ebdf1bffb6bcc5f89dda97f91e40c": "HX Effects 3.80.0 (stock)",
+    "2efb98791581b67116ba82c5ecd30ea2": "HX Effects 3.80.0 + NAM A2 Lite",
+    "a2cd8f4ae56f49415380270ebc484bf1": "HX Stomp 3.80.0 (stock)",
+    "a37659d04cf97218bd1c470c6519cdad": "HX Stomp 3.80.0 + NAM A2 Lite",
+    "329e3a26d60d3de1988b6785fa833ee1": "HX Stomp XL 3.80.0 (stock)",
+    "8918ab60ebff62ebfccd4fccb2bed85a": "HX Stomp XL 3.80.0 + NAM A2 Lite",
+  };
+
+  // Where the HX Effects 3.80.0 application keeps its model names (addresses in its code segment;
+  // the same in the stock and the NAM A2 Lite build, see tools/effects.py in nocaseguy/hx-stomp-nam-lite).
+  const LAYOUTS = {
+    HX_Effects: {
+      unit: "HX Effects",
+      segs: [[0x10000000, 0xd6f0], [0x100870e0, 0x1f78], [0x28000000, 0x115670], [0x20000000, 0x667c]],
+      tab2: 0x280bd8fc, tab2Ptr: 0x280bd8f8, tab2CntInsn: 0x280bd85c, tab2Stock: 777,
+      blistPtr: 0x2810021c, blistCnt: 0x2810030c, slots: 52,
+      namNi: 1516,   // Xenomorph Fuzz Mono's name index: the NAM A2 Lite block lives here
+    },
+  };
+  const CATS = ["Distortion", "Dynamics", "EQ", "Modulation", "Delay", "Reverb", "Pitch/Synth", "Filter", "Wah",
+    "Impulse Response", "Volume/Pan", "Send/Return", "Looper"];
+  const FOLDERS = ["Mono", "Stereo", "Legacy", "Folder 4"];
+  const MAXLEN = 16;
+
+  // ---------- containers ----------
+  function hxfChunks(raw) {
+    if (tag(raw, 0) !== "FORM" || tag(raw, 8) !== "L6FF") throw new Error("This isn't a Line 6 .hxf firmware file.");
+    const out = []; let pos = 12;
+    while (pos < raw.length) {
+      const id = tag(raw, pos), sz = be32(raw, pos + 4);
+      out.push({ id, body: raw.subarray(pos + 8, pos + 8 + sz) });
+      pos += 8 + sz + (sz & 1);
+    }
+    return out;
+  }
+
+  function l6iaEntries(d) {
+    if (tag(d, 0) !== "L6IA") throw new Error("The firmware's inner archive isn't an L6IA image.");
+    const n = be32(d, 0x14), out = []; let off = 0x18;
+    for (let k = 0; k < n; k++) {
+      if (be32(d, off + 4) !== 0x03800000) throw new Error(`Entry ${k}: bad marker.`);
+      const words = be32(d, off + 0x10);
+      out.push({ index: be32(d, off), type: be32(d, off + 8), off, words, h1: be32(d, off + 0x14), h2: be32(d, off + 0x18),
+        subOff: off + 0x24, payOff: off + 0x224, payLen: words * 4 - 0x200 });
+      off += 0x24 + words * 4;
+    }
+    return out;
+  }
+
+  function verifyEntry(d, e) {          // every integrity field of one entry; returns a list of problems
+    const bad = [];
+    const [a, b] = fletcher(d, e.subOff, e.subOff + e.words * 4);
+    if (a !== e.h1 || b !== e.h2) bad.push(`entry ${e.index}: Fletcher sum`);
+    const plen = be32(d, e.subOff + 0xc);
+    if (plen !== e.payLen) bad.push(`entry ${e.index}: length`);
+    const sw = swap32(d.subarray(e.payOff, e.payOff + e.payLen));
+    if (crc32(sw) !== be32(d, e.subOff + 8)) bad.push(`entry ${e.index}: CRC32`);
+    if (le32(sw, 0) === 0x230b0c5e) {
+      const size = le32(sw, 4);
+      if (crc32(sw, 0x34, size) !== le32(sw, 8)) bad.push(`entry ${e.index}: image CRC32`);
+    }
+    return bad;
+  }
+
+  // ---------- Entry 0 view ----------
+  function segments(e0) {
+    const n = le32(e0, 16), out = []; let off = 0x34;
+    for (let k = 0; k < n; k++) { const len = le32(e0, off), dst = le32(e0, off + 4), nxt = le32(e0, off + 8); out.push({ data: off + 12, len, dst }); off = nxt; }
+    return out;
+  }
+  function makeView(e0) {
+    const segs = segments(e0);
+    const fo = (va, n = 1) => {
+      for (const s of segs) if (va >= s.dst && va + n <= s.dst + s.len) return s.data + (va - s.dst);
+      throw new Error(`address ${va.toString(16)} is outside the application`);
+    };
+    return { segs, fo, u32: (va) => le32(e0, fo(va, 4)) };
+  }
+  function movwImm(b, o) {             // Thumb-2 MOVW T3, two little-endian halfwords
+    const h1 = b[o] | (b[o + 1] << 8), h2 = b[o + 2] | (b[o + 3] << 8);
+    if ((h1 & 0xfbf0) !== 0xf240) return -1;
+    return ((h1 & 0xf) << 12) | (((h1 >> 10) & 1) << 11) | (((h2 >> 12) & 7) << 8) | (h2 & 0xff);
+  }
+  const readName = (b, o, n) => { let s = ""; for (let i = 0; i < n && b[o + i]; i++) s += String.fromCharCode(b[o + i]); return s; };
+
+  // ---------- open ----------
+  async function open(raw) {
+    raw = new Uint8Array(raw);
+    const chunks = hxfChunks(raw);
+    const head = chunks.find((c) => c.id === "HEAD"), data = chunks.find((c) => c.id === "data");
+    if (!head || !data) throw new Error("The .hxf is missing its HEAD or data chunk.");
+    const fileMd5 = hex(md5(raw));
+    const payload = await inflate(data.body);
+    if (hex(md5(payload)) !== hex(head.body.subarray(20, 36))) throw new Error("The firmware's payload doesn't match its own MD5. The file may be damaged.");
+    const entries = l6iaEntries(payload);
+    const problems = entries.flatMap((e) => verifyEntry(payload, e));
+    if (problems.length) throw new Error("The firmware's own checksums don't add up: " + problems.join(", "));
+
+    const e = entries[0];
+    const e0 = swap32(payload.subarray(e.payOff, e.payOff + e.payLen));
+    const v = makeView(e0);
+    let layout = null, unitKey = null;
+    for (const [k, L] of Object.entries(LAYOUTS)) {
+      if (v.segs.length === L.segs.length && v.segs.every((s, i) => s.dst === L.segs[i][0] && s.len === L.segs[i][1])) { layout = L; unitKey = k; }
+    }
+    if (!layout) {
+      const known = KNOWN_MD5[fileMd5];
+      throw new Error(known && known.startsWith("HX Stomp")
+        ? `This is ${known}. Renaming isn't supported on the Stomp yet: its names live elsewhere in the firmware.`
+        : "This firmware's layout isn't one the renamer knows. It supports HX Effects 3.80.0 (stock or NAM A2 Lite).");
+    }
+    if (v.u32(layout.tab2Ptr) !== layout.tab2) throw new Error("Model name table not where expected for HX Effects 3.80.0.");
+    const tab2Cnt = movwImm(e0, v.fo(layout.tab2CntInsn, 4));
+    if (tab2Cnt < 700 || tab2Cnt > layout.tab2Stock) throw new Error("Model name table count isn't what HX Effects 3.80.0 has.");
+
+    // Table 2: one 44-byte row per model name index; its name is 16 bytes at +4.
+    const rows = new Map();
+    for (let k = 0; k < tab2Cnt; k++) { const o = v.fo(layout.tab2 + 44 * k, 44); rows.set(le32(e0, o), o); }
+    // The model browser: 13 categories x 4 folders of 48-byte items, the name index at +4 and the name (26 bytes) at +14.
+    const items = [];
+    for (let c = 0; c < layout.slots; c++) {
+      const lp = v.u32(layout.blistPtr + 4 * c), lc = v.u32(layout.blistCnt + 4 * c);
+      if (lc > 200) throw new Error("Browser list looks wrong.");
+      for (let k = 0; k < lc; k++) {
+        const o = v.fo(lp + 48 * k, 48), ni = le32(e0, o + 4);
+        items.push({ cat: c >> 2, folder: c & 3, ni, off: o, name: readName(e0, o + 14, 26) });
+      }
+    }
+    // models: one per name index
+    const models = new Map();
+    for (const it of items) {
+      let m = models.get(it.ni);
+      if (!m) {
+        const ro = rows.get(it.ni);
+        m = { ni: it.ni, cat: it.cat, folder: it.folder, name: it.name, longName: ro !== undefined ? readName(e0, ro + 4, 16) : "",
+          rowOff: ro, itemOffs: [], locked: it.ni === layout.namNi && it.name === "NAM A2 Lite" };
+        models.set(it.ni, m);
+      }
+      m.itemOffs.push(it.off);
+    }
+    return { raw, chunks, head, payload, entries, e0, layout, unitKey, fileMd5, known: KNOWN_MD5[fileMd5] || null,
+      models: [...models.values()], CATS, FOLDERS };
+  }
+
+  function checkName(s) {
+    if (!s.length) return "Name can't be empty.";
+    if (s.length > MAXLEN) return `${s.length}/${MAXLEN} characters: too long.`;
+    if (!/^[\x20-\x7e]+$/.test(s)) return "Use plain letters, numbers and punctuation only.";
+    if (s !== s.trim()) return "No spaces at the start or end.";
+    return null;
+  }
+
+  // ---------- build ----------
+  // names: Map or object ni -> new name. Returns { bytes, md5, changed }.
+  // longs (optional): ni -> the model's own (16-byte) name; defaults to the list name when it changes.
+  async function build(fw, names, longs) {
+    const get = (ni) => (names instanceof Map ? names.get(ni) : names[ni]);
+    const getLong = (ni) => (longs ? (longs instanceof Map ? longs.get(ni) : longs[ni]) : undefined);
+    const e0 = new Uint8Array(fw.e0);
+    let changed = 0;
+    const put = (o, s, n) => { for (let i = 0; i < n; i++) e0[o + i] = i < s.length ? s.charCodeAt(i) : 0; };
+    for (const m of fw.models) {
+      const s = get(m.ni);
+      if (s === undefined || m.locked) continue;
+      const err = checkName(s);
+      if (err) throw new Error(`${m.name}: ${err}`);
+      let L = getLong(m.ni);
+      if (L === undefined) L = s === m.name ? m.longName : s;
+      if (L !== m.longName && checkName(L)) throw new Error(`${m.name}: ${checkName(L)}`);
+      let did = false;
+      if (s !== m.name) { for (const o of m.itemOffs) put(o + 14, s, 26); did = true; }
+      if (m.rowOff !== undefined && L !== m.longName) { put(m.rowOff + 4, L, 16); did = true; }
+      if (did) changed++;
+    }
+    // Entry 0's own image CRC
+    if (le32(e0, 0) !== 0x230b0c5e) throw new Error("Entry 0 header changed unexpectedly.");
+    wle32(e0, 8, crc32(e0, 0x34, le32(e0, 4)));
+    // back into the archive: payload (big-endian words), sub-header CRC32, Fletcher sums
+    const e = fw.entries[0];
+    const pay = new Uint8Array(fw.payload);
+    pay.set(swap32(e0), e.payOff);
+    wbe32(pay, e.subOff + 8, crc32(e0));
+    const [a, b] = fletcher(pay, e.subOff, e.subOff + e.words * 4);
+    wbe32(pay, e.off + 0x14, a); wbe32(pay, e.off + 0x18, b);
+    // verify the whole archive again before packing
+    const problems = l6iaEntries(pay).flatMap((x) => verifyEntry(pay, x));
+    if (problems.length) throw new Error("Self-check failed: " + problems.join(", "));
+    // .hxf: same HEAD (size unchanged, new MD5), same dinf chunks, recompressed data
+    const head = new Uint8Array(fw.head.body);
+    wbe32(head, 16, pay.length);
+    head.set(md5(pay), 20);
+    const comp = await deflate(pay);
+    const parts = [];
+    for (const c of fw.chunks) parts.push([c.id, c.id === "HEAD" ? head : c.id === "data" ? comp : c.body]);
+    let size = 4; for (const [, body] of parts) size += 8 + body.length + (body.length & 1);
+    const out = new Uint8Array(8 + size);
+    out.set([70, 79, 82, 77]); wbe32(out, 4, size); out.set([76, 54, 70, 70], 8);
+    let p = 12;
+    for (const [id, body] of parts) {
+      for (let i = 0; i < 4; i++) out[p + i] = id.charCodeAt(i);
+      wbe32(out, p + 4, body.length); out.set(body, p + 8); p += 8 + body.length + (body.length & 1);
+    }
+    // round trip: the file we hand out must open and pass every check
+    const back = await open(out);
+    for (const m of back.models) {
+      const s = get(m.ni);
+      if (s !== undefined && !m.locked && m.name !== s) throw new Error(`Round-trip check: ${m.name} didn't take its new name.`);
+    }
+    return { bytes: out, md5: hex(md5(out)), changed };
+  }
+
+  // A .zip holding one stored (uncompressed) file: for hosts that only allow certain download types.
+  function zipOne(name, data) {
+    const nb = new TextEncoder().encode(name), crc = crc32(data), n = data.length;
+    const lh = new Uint8Array(30 + nb.length), ch = new Uint8Array(46 + nb.length), end = new Uint8Array(22);
+    const w16 = (b, o, v) => { b[o] = v; b[o + 1] = v >>> 8; };
+    wle32(lh, 0, 0x04034b50); w16(lh, 4, 20); w16(lh, 8, 0); wle32(lh, 14, crc); wle32(lh, 18, n); wle32(lh, 22, n); w16(lh, 26, nb.length); lh.set(nb, 30);
+    wle32(ch, 0, 0x02014b50); w16(ch, 4, 20); w16(ch, 6, 20); wle32(ch, 16, crc); wle32(ch, 20, n); wle32(ch, 24, n); w16(ch, 28, nb.length); ch.set(nb, 46);
+    wle32(end, 0, 0x06054b50); w16(end, 8, 1); w16(end, 10, 1); wle32(end, 12, ch.length); wle32(end, 16, lh.length + n);
+    return new Blob([lh, data, ch, end], { type: "application/zip" });
+  }
+
+  root.HXRename = { open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+(() => {
+  "use strict";
+  const H = window.HXRename, D = window.HX_NAMES;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem("hxrename.names") || "null"); } catch (e) { return null; } },
+    set(v) { try { localStorage.setItem("hxrename.names", JSON.stringify(v)); } catch (e) {} },
+  };
+
+  let fw = null, fileName = "", groups = [], url = null;
+
+  // ---- step 1 ----
+  const drop = $("fwDrop");
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, () => drop.classList.remove("over")));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]); });
+  $("fwPick").addEventListener("change", (e) => { if (e.target.files[0]) load(e.target.files[0]); e.target.value = ""; });
+
+  function status(prefix, kind, title, text, files) {
+    const s = $(prefix + "Status");
+    s.hidden = false; s.className = "status " + kind;
+    $(prefix + "Title").textContent = title;
+    $(prefix + "Text").innerHTML = text || "";
+    $(prefix + "Files").innerHTML = (files || []).map(([k, v]) => `<div><b>${esc(k)}</b><span class="mono">${esc(v)}</span></div>`).join("");
+  }
+
+  async function load(file) {
+    drop.classList.add("busy");
+    status("fw", "", "Reading " + file.name + "…", "");
+    try {
+      if (!("DecompressionStream" in window)) throw new Error("This browser can't unpack the firmware. Use a current Chrome, Edge, Safari or Firefox.");
+      const buf = new Uint8Array(await file.arrayBuffer());
+      fw = await H.open(buf);
+      fileName = file.name;
+      const renamed = fw.models.filter((m) => !m.locked && D.stockShort[m.ni] !== undefined && m.name !== D.stockShort[m.ni]).length;
+      status("fw", "ok", "Ready: " + (fw.known || (renamed ? "HX Effects 3.80.0, renamed before" : "HX Effects 3.80.0 (checks pass)")),
+        renamed ? `This file already has ${renamed} custom names. They're shown below as they are.` : "All its checksums pass. " + fw.models.length + " models found.",
+        [["File", file.name], ["MD5", fw.fileMd5], ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
+      $("s1").classList.add("done"); $("nav1").classList.add("done");
+      buildGroups(renamed === 0);
+    } catch (err) {
+      fw = null;
+      status("fw", "bad", "Can't use this file", esc(err.message));
+      $("editor").hidden = true; $("noFw").hidden = false; $("buildBtn").disabled = true;
+      $("s1").classList.remove("done"); $("nav1").classList.remove("done");
+    } finally { drop.classList.remove("busy"); }
+  }
+
+  // ---- step 2 ----
+  // One row per model name the list shows, within one category and modern-or-legacy: a Mono/Stereo pair is one row.
+  function buildGroups(fresh) {
+    const map = new Map();
+    for (const m of fw.models) {
+      const stock = D.stockShort[m.ni] ?? m.name;
+      const legacy = m.folder === 2;
+      const key = m.cat + "|" + (legacy ? "L" : "M") + "|" + stock + "|" + (m.locked ? "lock" : "");
+      let g = map.get(key);
+      if (!g) { g = { key, cat: m.cat, legacy, stock, folders: new Set(), models: [], locked: m.locked, cur: m.name, based: "" }; map.set(key, g); }
+      g.folders.add(H.FOLDERS[m.folder]); g.models.push(m);
+      if (!g.based && D.basedOn[m.ni]) g.based = D.basedOn[m.ni];
+    }
+    groups = [...map.values()];
+    const saved = store.get();
+    for (const g of groups) {
+      const sug = g.models.map((m) => D.proposed[m.ni]).find(Boolean);
+      g.suggested = sug || g.stock;
+      let v = g.cur;
+      if (saved && saved[g.models[0].ni] !== undefined) v = saved[g.models[0].ni];
+      else if (fresh) v = g.suggested;
+      g.value = g.locked ? g.cur : v;
+    }
+    const sel = $("catSel"); sel.length = 1;
+    H.CATS.forEach((c, i) => { if (groups.some((g) => g.cat === i)) sel.add(new Option(c, String(i))); });
+    $("noFw").hidden = true; $("editor").hidden = false; $("buildBtn").disabled = false;
+    render();
+  }
+
+  function rowHtml(g, i) {
+    const err = g.locked ? null : H.checkName(g.value);
+    const n = g.value.length, changed = !g.locked && g.value !== g.stock;
+    const folders = g.legacy ? "Legacy" : [...g.folders].join(" · ");
+    return `<div class="mrow${changed ? " changed" : ""}${err ? " bad" : ""}${g.locked ? " locked" : ""}" data-i="${i}">
+      <div class="who"><b>${esc(g.locked ? g.cur : g.stock)}</b><span class="chip">${esc(folders)}</span>${g.locked ? '<span class="chip ok">locked</span>' : ""}
+        <small>${esc(g.based || "Line 6 Original")}</small></div>
+      <input value="${esc(g.value)}" maxlength="16" spellcheck="false" aria-label="New name for ${esc(g.stock)}"${g.locked ? " disabled" : ""}>
+      <span class="count${n > 16 ? " over" : n >= 15 ? " near" : ""}">${n}/16</span>
+      <button class="undo" type="button" title="Back to ${esc(g.stock)}"${changed ? "" : " disabled"}>↺</button>
+      ${err ? `<span class="err">${esc(err)}</span>` : ""}
+    </div>`;
+  }
+
+  function render() {
+    const q = $("q").value.trim().toLowerCase(), cat = $("catSel").value, only = $("onlyChanged").checked;
+    let html = "";
+    H.CATS.forEach((c, ci) => {
+      if (cat !== "" && +cat !== ci) return;
+      const rows = groups.map((g, i) => [g, i]).filter(([g]) => g.cat === ci
+        && (!only || g.value !== g.stock)
+        && (!q || (g.stock + " " + g.value + " " + g.based).toLowerCase().includes(q)));
+      if (!rows.length) return;
+      rows.sort(([a], [b]) => (a.legacy - b.legacy));
+      html += `<div class="cat"><h3>${esc(c)} <small>${rows.length}</small></h3>${rows.map(([g, i]) => rowHtml(g, i)).join("")}</div>`;
+    });
+    $("list").innerHTML = html || '<p class="tip">Nothing matches.</p>';
+    summary();
+  }
+
+  function summary() {
+    const ch = groups.filter((g) => !g.locked && g.value !== g.stock).length;
+    const bad = groups.filter((g) => !g.locked && H.checkName(g.value)).length;
+    $("summary").innerHTML = `${ch} of ${groups.length} names changed` + (bad ? ` · <b style="color:var(--bad)">${bad} to fix</b>` : "");
+    $("buildBtn").disabled = !fw || bad > 0;
+    if (ch) { $("s2").classList.add("done"); $("nav2").classList.add("done"); } else { $("s2").classList.remove("done"); $("nav2").classList.remove("done"); }
+  }
+
+  function save() { const o = {}; for (const g of groups) if (!g.locked) for (const m of g.models) o[m.ni] = g.value; store.set(o); }
+
+  $("list").addEventListener("input", (e) => {
+    const row = e.target.closest(".mrow"); if (!row || e.target.tagName !== "INPUT") return;
+    const g = groups[+row.dataset.i]; g.value = e.target.value;
+    // update this row in place so the cursor stays put
+    const err = H.checkName(g.value), n = g.value.length, changed = g.value !== g.stock;
+    row.classList.toggle("changed", changed); row.classList.toggle("bad", !!err);
+    const c = row.querySelector(".count"); c.textContent = n + "/16"; c.className = "count" + (n > 16 ? " over" : n >= 15 ? " near" : "");
+    row.querySelector(".undo").disabled = !changed;
+    let el = row.querySelector(".err");
+    if (err) { if (!el) { el = document.createElement("span"); el.className = "err"; row.appendChild(el); } el.textContent = err; } else if (el) el.remove();
+    save(); summary(); clearBuild();
+  });
+  $("list").addEventListener("click", (e) => {
+    if (!e.target.classList.contains("undo")) return;
+    const g = groups[+e.target.closest(".mrow").dataset.i]; g.value = g.stock; save(); render(); clearBuild();
+  });
+  ["q", "catSel", "onlyChanged"].forEach((id) => $(id).addEventListener("input", render));
+  $("useSuggested").addEventListener("click", () => { for (const g of groups) if (!g.locked) g.value = g.suggested; save(); render(); clearBuild(); });
+  $("resetAll").addEventListener("click", () => { for (const g of groups) if (!g.locked) g.value = g.stock; save(); render(); clearBuild(); });
+  $("exportBtn").addEventListener("click", () => {
+    const o = { format: "hx-model-names/1", unit: "HX Effects 3.80.0", names: {} };
+    for (const g of groups) if (!g.locked) for (const m of g.models) o.names[m.ni] = { line6: g.stock, name: g.value };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: "application/json" }));
+    a.download = "hx-effects-model-names.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  $("importPick").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const o = JSON.parse(await f.text());
+      if (!o || o.format !== "hx-model-names/1") throw new Error("not a names file saved from this page");
+      let n = 0;
+      for (const g of groups) { if (g.locked) continue; const hit = o.names[g.models[0].ni]; if (hit && typeof hit.name === "string") { g.value = hit.name; n++; } }
+      save(); render(); clearBuild();
+      alertBox(`Loaded ${n} names from ${f.name}.`);
+    } catch (err) { alertBox("Couldn't load that file: " + err.message, true); }
+  });
+  function alertBox(msg, bad) { $("summary").innerHTML = `<span style="color:var(${bad ? "--bad" : "--ok"})">${esc(msg)}</span>`; setTimeout(summary, 4000); }
+
+  // ---- step 3 ----
+  let hostP = null;
+  function hostDownloads() {
+    if (!hostP) hostP = (window.claude && typeof window.claude.use === "function")
+      ? Promise.race([window.claude.use("downloads"), new Promise((r) => setTimeout(() => r(null), 4000))]).catch(() => null)
+      : Promise.resolve(null);
+    return hostP;
+  }
+  function alertBuild(msg) { $("bText").textContent = msg; }
+  function clearBuild() { $("dlBtn").hidden = true; $("bStatus").hidden = true; $("s3").classList.remove("done"); $("nav3").classList.remove("done"); }
+  $("buildBtn").addEventListener("click", async () => {
+    const btn = $("buildBtn"); btn.disabled = true; clearBuild();
+    status("b", "", "Building…", "Writing names, fixing checksums, then re-checking the whole file.");
+    try {
+      const names = new Map(), longs = new Map();
+      for (const g of groups) if (!g.locked) for (const m of g.models) {
+        names.set(m.ni, g.value);
+        // back at the Line 6 name: restore Line 6's own longer name too ("Deranged Master")
+        longs.set(m.ni, g.value === g.stock ? (D.stockLong[m.ni] || g.stock) : g.value);
+      }
+      const r = await H.build(fw, names, longs);
+      const base = fileName.replace(/\.hxf$/i, "").replace(/_Renamed$/i, "");
+      const out = base + "_Renamed.hxf";
+      if (url) URL.revokeObjectURL(url);
+      const dl = $("dlBtn"); dl.hidden = false; dl.classList.add("primary");
+      const host = await hostDownloads();
+      if (host) {
+        // a hosted page: only some file types may download, so the .hxf goes inside a .zip
+        dl.removeAttribute("href"); dl.removeAttribute("download");
+        dl.textContent = "Download " + out.replace(/\.hxf$/, ".zip");
+        dl.onclick = async (ev) => {
+          ev.preventDefault();
+          try { await host.save({ filename: out.replace(/\.hxf$/, ".zip"), data: H.zipOne(out, r.bytes) }); }
+          catch (e2) { if (e2 && e2.code !== "declined") alertBuild("Download didn't go through (" + (e2.code || e2.message) + ")."); }
+        };
+      } else {
+        url = URL.createObjectURL(new Blob([r.bytes], { type: "application/octet-stream" }));
+        dl.onclick = null; dl.href = url; dl.download = out; dl.textContent = "Download " + out;
+      }
+      status("b", "ok", "Built and checked", `${r.changed} models renamed. The file reopened cleanly and every checksum passes.`,
+        [["File", out], ["Size", (r.bytes.length / 1048576).toFixed(2) + " MB"], ["MD5", r.md5]]);
+      $("s3").classList.add("done"); $("nav3").classList.add("done");
+    } catch (err) {
+      status("b", "bad", "Build stopped", esc(err.message) + "<br>Nothing was saved.");
+    } finally { btn.disabled = false; summary(); }
+  });
+})();
+</script>
+</body>
+</html>

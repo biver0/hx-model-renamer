@@ -236,6 +236,7 @@
       <li>Let it finish, and let the unit restart on its own.</li>
       <li>Open the model list: <b>Distortion</b> should now show <b>Boss SD-1</b> where <b>Stupor OD</b> was.</li>
     </ol>
+    <p class="tip"><b>Footswitch labels in your existing presets keep Line 6's names.</b> A preset saves each footswitch's label when its block is assigned, so on presets made before renaming, the scribble strips show the old name on switches that aren't selected. Blocks you add from now on get the new names. To update an older preset, re-pick the model on that switch or edit its label.</p>
     <p class="tip"><b>HX Edit still shows Line 6's names.</b> It reads them from its own model list on your computer, not from the unit. Your presets are fine either way: they store each model's ID, not its name.</p>
   </section>
 
@@ -256,7 +257,7 @@
     </ol>
     <details class="faq">
       <summary>What exactly does this change?</summary>
-      <p>Three names per model: two in the unit's main application (the model list, and the model's own name) and the <b>display name</b> in its model database, which the footswitch scribble strips show. New display names are added to the database's string table, and each renamed model points to its new one; nothing else in the database changes. Then every checksum: the application's image CRC, the database's string-table CRC, each archive entry's CRC32 and Fletcher sums, the payload MD5 and the size fields. Setting every name back to Line 6's gives you the original file, byte for byte.</p>
+      <p>Three names per model: two in the unit's main application (the model list, and the model's own name) and the <b>display name</b> in its model database. New display names are added to the database's string table, and each renamed model points to its new one; nothing else in the database changes. Then every checksum: the application's image CRC, the database's string-table CRC, each archive entry's CRC32 and Fletcher sums, the payload MD5 and the size fields. Setting every name back to Line 6's gives you the original file, byte for byte.</p>
     </details>
     <details class="faq">
       <summary>Why is NAM A2 Lite locked?</summary>
@@ -833,12 +834,12 @@
       D = ALL[fw.unitKey];
       fileName = file.name;
       const renamed = fw.models.filter((m) => !m.locked && stockOf(m) !== m.name).length;
-      // renamed by 1.0.0 to 1.1.0: list names changed, display names (scribble strips) still Line 6's
+      // renamed by 1.0.0 to 1.1.0: list names changed, model database display names still Line 6's
       const stale = fw.models.filter((m) => !m.locked && stockOf(m) !== m.name && m.displayName !== m.name
         && m.displayName === ((D.stockDisp || {})[m.ni] ?? D.stockLong[m.ni])).length;
       if (stale) {
         status("fw", "warn", "Built by an older version: rebuild this file",
-          `This file was renamed by version 1.1.0 or earlier, which left ${stale} models' scribble strip names as Line 6's (unselected switches show the old name). Build it again below with version ${H.VERSION} to fix it. Your names are loaded as they are.`,
+          `This file was renamed by version 1.1.0 or earlier, which left ${stale} models' display names in the unit's model database as Line 6's. Build it again below with version ${H.VERSION}. Your names are loaded as they are.`,
           [["File", file.name], ["MD5", fw.fileMd5], ["Unit", fw.unit + " 3.80.0"]]);
       } else
       status("fw", "ok", "Ready: " + (fw.known || (fw.unit + " 3.80.0" + (renamed ? ", renamed before" : " (checks pass)"))),

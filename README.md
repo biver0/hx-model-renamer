@@ -32,6 +32,14 @@ New display names are added to the database's string table and each renamed mode
 
 ## Changelog
 
-- **2026-11-22:** Fixed: unselected footswitch scribble strips still showed Line 6's names (only the selected block showed the new name). The model database's display names are now renamed too. Rebuild your firmware with the page and reinstall it.
-- **2026-11-22:** Added HX Stomp and HX Stomp XL support.
-- **2026-11-22:** First release (HX Effects).
+Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
+
+### 1.1.1 (2026-11-22)
+- **Fixed:** on the unit, footswitches that weren't selected still showed Line 6's names on their scribble strips (only the selected block showed the new name). The firmware keeps a third copy of each name, the display name in its model database, and the page now renames that too.
+- **If you built a file with 1.1.0 or earlier, rebuild it and reinstall.** Drop the old file on the page and it will tell you so; your names load as they were.
+
+### 1.1.0 (2026-11-22)
+- Added HX Stomp and HX Stomp XL support (stock and NAM A2 Lite builds).
+
+### 1.0.0 (2026-11-22)
+- First release: HX Effects 3.80.0 (stock and NAM A2 Lite builds).

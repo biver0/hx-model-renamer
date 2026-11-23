@@ -74,6 +74,8 @@
   .status.bad { background: var(--bad-soft); border-color: transparent; }
   .status.bad .title { color: var(--bad); }
   .status.ok .title { color: var(--ok); }
+  .status.warn { background: var(--warn-soft); border-color: transparent; }
+  .status.warn .title { color: var(--warn); }
   .status .title { font-weight: 700; }
   .files { display: grid; gap: 6px; font-size: 14px; }
   .files div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel); }
@@ -140,7 +142,7 @@
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">HX Effects · HX Stomp · HX Stomp XL · Model Renamer</span>
+    <span class="eyebrow">HX Effects · HX Stomp · HX Stomp XL · Model Renamer <span id="ver"></span></span>
     <h1>Rename the models on your HX</h1>
     <p class="lede">Drop in your firmware and give every model a name that says what it is: <b>Boss SD-1</b> instead of <b>Stupor OD</b>. Then download a new <b>.hxf</b> with every checksum fixed. It all runs in this browser. Nothing is uploaded anywhere.</p>
   </header>
@@ -267,6 +269,7 @@
   </section>
 
   <footer>
+    <span id="verFoot"></span>
     <span>Made to sit beside <a href="https://github.com/nocaseguy/hx-stomp-nam-lite">nocaseguy/hx-stomp-nam-lite</a>, whose firmware notes made this possible. Not affiliated with Line 6 or Yamaha Guitar Group. All product names are trademarks of their owners, used only to say what each model is based on.</span>
   </footer>
 </div>
@@ -447,6 +450,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
+  const VERSION = "1.1.1";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -474,7 +478,7 @@
     // strings we added before sit after a tag string that remembers how the table was laid out
     let base = P.strs.length, undo = null;
     const ti = P.strs.findIndex((s) => s.startsWith(TAG));
-    if (ti >= 0) { base = ti; undo = P.strs[ti].slice(TAG.length).split(":").map((x) => parseInt(x, 16)); }
+    if (ti >= 0) { base = ti; undo = P.strs[ti].slice(TAG.length).split(":").slice(0, 3).map((x) => parseInt(x, 16)); }
     const index = new Map();
     for (let i = 0; i < base; i++) if (!index.has(P.strs[i])) index.set(P.strs[i], i);
     // each target model's displayName record
@@ -517,7 +521,7 @@
     const baseRecs = b.slice(P.strOff + 8, P.strOff + 8 + 12 * base);
     let section;
     if (added.length) {
-      const tag = TAG + [origOff, origLen, origTotal].map((x) => x.toString(16)).join(":");
+      const tag = TAG + [origOff, origLen, origTotal].map((x) => x.toString(16)).join(":") + ":v" + VERSION;
       const all = [tag, ...added];
       const enc = all.map((s) => Uint8Array.from(s, (ch) => ch.charCodeAt(0)));
       const n2 = base + all.length;
@@ -681,11 +685,13 @@
     const e3e = entries[3];
     const e3 = swap32(payload.subarray(e3e.payOff, e3e.payOff + e3e.payLen));
     const disp = e3DisplayNames(e3);
+    const tagStr = e3Parse(e3).strs.find((s) => s.startsWith(TAG));
+    const builtBy = tagStr ? ((tagStr.split(":").find((x) => x.startsWith("v")) || "v1.1.1").slice(1)) : null;
     for (const m of models.values()) {
       if (!disp.has(m.ni)) throw new Error(`Model ${m.name} has no record in the model database (${where}).`);
       m.displayName = disp.get(m.ni);
     }
-    return { raw, chunks, head, payload, entries, e0, e3, layout, unitKey, fileMd5, known: KNOWN_MD5[fileMd5] || null,
+    return { raw, chunks, head, payload, entries, e0, e3, builtBy, layout, unitKey, fileMd5, known: KNOWN_MD5[fileMd5] || null,
       models: [...models.values()], cats: layout.cats, folderNames, unit: layout.unit };
   }
 
@@ -781,7 +787,7 @@
     return new Blob([lh, data, ch, end], { type: "application/zip" });
   }
 
-  root.HXRename = { open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
+  root.HXRename = { VERSION, open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -798,6 +804,8 @@
   };
 
   let fw = null, fileName = "", groups = [], url = null;
+  $("ver").textContent = "· " + H.VERSION;
+  $("verFoot").innerHTML = `Version ${H.VERSION} · <a href="https://github.com/biver0/hx-model-renamer#changelog">What's changed</a> · <a href="https://github.com/biver0/hx-model-renamer">Source on GitHub</a>`;
 
   // ---- step 1 ----
   const drop = $("fwDrop");
@@ -825,9 +833,17 @@
       D = ALL[fw.unitKey];
       fileName = file.name;
       const renamed = fw.models.filter((m) => !m.locked && stockOf(m) !== m.name).length;
+      // renamed by 1.0.0 to 1.1.0: list names changed, display names (scribble strips) still Line 6's
+      const stale = fw.models.filter((m) => !m.locked && stockOf(m) !== m.name && m.displayName !== m.name
+        && m.displayName === ((D.stockDisp || {})[m.ni] ?? D.stockLong[m.ni])).length;
+      if (stale) {
+        status("fw", "warn", "Built by an older version: rebuild this file",
+          `This file was renamed by version 1.1.0 or earlier, which left ${stale} models' scribble strip names as Line 6's (unselected switches show the old name). Build it again below with version ${H.VERSION} to fix it. Your names are loaded as they are.`,
+          [["File", file.name], ["MD5", fw.fileMd5], ["Unit", fw.unit + " 3.80.0"]]);
+      } else
       status("fw", "ok", "Ready: " + (fw.known || (fw.unit + " 3.80.0" + (renamed ? ", renamed before" : " (checks pass)"))),
         renamed ? `This file already has ${renamed} custom names. They're shown below as they are.` : "All its checksums pass. " + fw.models.length + " models found.",
-        [["File", file.name], ["MD5", fw.fileMd5], ...(isFx() ? [] : [["Tested", "not yet on this unit: the page reads it, but no renamed file has been installed on one"]]), ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
+        [["File", file.name], ["MD5", fw.fileMd5], ...(fw.builtBy ? [["Renamed by", "version " + fw.builtBy]] : []), ...(isFx() ? [] : [["Tested", "not yet on this unit: the page reads it, but no renamed file has been installed on one"]]), ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
       $("s1").classList.add("done"); $("nav1").classList.add("done");
       buildGroups(renamed === 0);
     } catch (err) {
@@ -976,8 +992,8 @@
         displays.set(m.ni, stock ? ((D.stockDisp || {})[m.ni] ?? D.stockLong[m.ni] ?? g.stock) : g.value);
       }
       const r = await H.build(fw, names, longs, displays);
-      const base = fileName.replace(/\.hxf$/i, "").replace(/_Renamed$/i, "");
-      const out = base + "_Renamed.hxf";
+      const base = fileName.replace(/\.hxf$/i, "").replace(/_Renamed(_\d+\.\d+\.\d+)?$/i, "");
+      const out = base + "_Renamed_" + H.VERSION + ".hxf";
       if (url) URL.revokeObjectURL(url);
       const dl = $("dlBtn"); dl.hidden = false; dl.classList.add("primary");
       const host = await hostDownloads();

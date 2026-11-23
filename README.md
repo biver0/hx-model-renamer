@@ -6,7 +6,7 @@ A one-page web app that renames the models on a Line 6 **HX Effects**, **HX Stom
 
 - Drop in your `.hxf` (stock 3.80.0, the [NAM A2 Lite](https://github.com/nocaseguy/hx-stomp-nam-lite) build, or a file you renamed here before).
 - Edit names (16 characters max). Suggested names for effects follow the HX Effects manual's "Based On" list; amps, preamps and cabs keep Line 6's names unless you change them.
-- Build: the page rewrites only the name fields, fixes every checksum (image CRC, archive CRC32 and Fletcher sums, payload MD5), re-opens the result to check it, and gives you the new `.hxf`.
+- Build: the page rewrites only model names, fixes every checksum, re-opens the result to check it, and gives you the new `.hxf`.
 
 Everything runs in your browser. No firmware is uploaded, and none is included in this repo.
 
@@ -19,3 +19,19 @@ Everything runs in your browser. No firmware is uploaded, and none is included i
 - **Recovery:** start the unit in update mode and install that unit's stock 3.80.0 `.hxf` with Line 6 Updater. HX Effects: hold the right arrow (**>**) at power-on. HX Stomp / XL: hold **Page Right** at power-on (nocaseguy's README); Line 6's manual says footswitches 2 and 3.
 
 Firmware layout details come from [nocaseguy/hx-stomp-nam-lite](https://github.com/nocaseguy/hx-stomp-nam-lite). Product names are trademarks of their owners, used only to say what each model is based on.
+
+## What changes
+
+Each model has three names in the firmware, and the page sets all three:
+
+1. its name in the model list,
+2. its own name in the main application,
+3. its **display name** in the model database, which the footswitch scribble strips show.
+
+New display names are added to the database's string table and each renamed model points to its new one. Nothing else in the database changes. Every checksum is recomputed: the application image CRC, the database string-table CRC, each archive entry's CRC32 and Fletcher sums, the payload MD5, and the size fields.
+
+## Changelog
+
+- **2026-11-22:** Fixed: unselected footswitch scribble strips still showed Line 6's names (only the selected block showed the new name). The model database's display names are now renamed too. Rebuild your firmware with the page and reinstall it.
+- **2026-11-22:** Added HX Stomp and HX Stomp XL support.
+- **2026-11-22:** First release (HX Effects).

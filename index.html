@@ -180,8 +180,8 @@
         <small>Both are free from Line 6. Line 6 Updater installs the firmware; HX Edit exports and imports your presets.</small></span></label>
       <label><input type="checkbox"><span><span>I backed up my presets and IRs in HX Edit.</span>
         <small>Use <b>Backup</b> in HX Edit. A firmware install normally keeps them, but a backup costs a minute.</small></span></label>
-      <label><input type="checkbox"><span><span>I exported the presets I use from HX Edit, and noted which slot each one is in.</span>
-        <small>Select them in HX Edit's preset list and choose <b>Export</b>; each one is saved as a <code>.hlx</code> file. Presets save each footswitch's label, so older presets keep Line 6's names on the scribble strips. Step 4 fixes these files and step 7 puts them back. Skip this if you'll only make new presets.</small></span></label>
+      <label><input type="checkbox"><span><span>I exported my setlist from HX Edit.</span>
+        <small>Presets save each footswitch's label, so older presets keep Line 6's names on the scribble strips. In HX Edit, export the setlist (the export at the top of the preset list): one <code>.hls</code> file with every preset, in slot order. Step 4 fixes it and step 7 imports it back. Single <code>.hlx</code> presets work too. Skip this if you'll only make new presets.</small></span></label>
       <label><input type="checkbox"><span><span>I have the 3.80.0 firmware file for my unit: Line 6's own, or the NAM A2 Lite build.</span>
         <small>One of the files below, or the same file with <code>_NAM_A2_Lite</code> in its name from <a href="https://nocaseguy.github.io/hx-stomp-nam-lite/web/">nocaseguy's NAM A2 Lite setup</a>. The page checks it before it changes anything.</small></span></label>
     </div>
@@ -243,15 +243,15 @@
     <div class="step-head">
       <span class="n">4</span>
       <h2>Add your presets</h2>
-      <p>Optional. The presets you exported from HX Edit in step 1, so their footswitch labels get your new names.</p>
+      <p>Optional. The setlist (or presets) you exported from HX Edit in step 1, so their footswitch labels get your new names.</p>
     </div>
     <label class="drop" id="pDrop">
       <svg class="jack" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="8" y="10" width="32" height="28" rx="3"/><circle cx="17" cy="24" r="4"/><circle cx="31" cy="24" r="4"/>
       </svg>
-      <strong>Drop your .hlx presets here</strong>
-      <small>one or many · only labels that are still a stock Line 6 name change; labels you typed stay · they stay on this computer</small>
-      <input id="pPick" type="file" accept=".hlx" multiple>
+      <strong>Drop your .hls setlist (or .hlx presets) here</strong>
+      <small>only labels that are still a stock Line 6 name change; labels you typed stay · everything else in the file stays byte for byte · it stays on this computer</small>
+      <input id="pPick" type="file" accept=".hls,.hlx" multiple>
     </label>
     <div class="status" id="pStatus" hidden>
       <span class="title" id="pTitle"></span>
@@ -300,15 +300,16 @@
     <div class="step-head">
       <span class="n">7</span>
       <h2>Import your presets</h2>
-      <p>If you added presets in step 4. Do this after the firmware is installed.</p>
+      <p>If you added a setlist or presets in step 4. Do this after the firmware is installed.</p>
     </div>
     <ol class="how">
-      <li>If you got a <code>.zip</code>, open it to get the <code>.hlx</code> files inside.</li>
+      <li>If you got a <code>.zip</code>, open it to get the file inside.</li>
       <li>Open <b>HX Edit</b> with your unit connected.</li>
-      <li>For each fixed preset, select the slot it came from in the preset list, choose <b>Import</b>, and pick its file. You can also drag the file onto the slot. Importing replaces what's in that slot.</li>
-      <li>Select the preset on the unit: switches that aren't selected now show your names too.</li>
+      <li><b>Setlist:</b> import the fixed <code>.hls</code> (the import at the top of the preset list). It replaces every preset on the unit with the fixed ones, in the same slots.</li>
+      <li><b>Single presets:</b> select the slot each one came from, choose <b>Import</b>, and pick its <code>.hlx</code> file (or drag it onto the slot). Importing replaces what's in that slot.</li>
+      <li>Select a preset on the unit: switches that aren't selected now show your names too.</li>
     </ol>
-    <p class="tip">Only presets with a label to change come back from step 5; the others are already fine. Presets you make from now on get the new names on their own.</p>
+    <p class="tip">Presets you make from now on get the new names on their own. Keep your HX Edit backup from step 1 until you've checked everything.</p>
   </section>
 
 
@@ -523,7 +524,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
-  const VERSION = "1.3.0";
+  const VERSION = "1.4.0";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -867,7 +868,7 @@
   // only when it is still a stock Line 6 name of that block's model. stockNames(m) -> [names], newName(m) -> name.
   function relabelPreset(text, fw, stockNames, newName) {
     const doc = JSON.parse(text);
-    const changes = [];
+    const changes = [], decide = new Map();
     const bySym = new Map(fw.models.map((m) => [m.symbol, m]));
     const fix = (tone) => {
       const fs = tone && tone.footswitch;
@@ -880,20 +881,69 @@
         if (!m || m.locked) continue;
         const to = newName(m), from = f["@fs_label"];
         if (!to || to === from || !stockNames(m).includes(from)) continue;
-        f["@fs_label"] = to; changes.push({ from, to });
+        decide.set(f, to); changes.push({ from, to });
       }
     };
-    // a preset, or a setlist/bundle holding presets
     const visit = (o) => {
       if (!o || typeof o !== "object") return;
       if (o.tone && typeof o.tone === "object") fix(o.tone);
       for (const v of Object.values(o)) if (v && typeof v === "object" && v !== o.tone) visit(v);
     };
     visit(doc);
-    // HX Edit's own layout: two-space indent, " : " between key and value
-    const out = JSON.stringify(doc, null, 2).replace(/^(\s*"(?:[^"\\]|\\.)*")(: )/gm, "$1 : ");
-    return { text: out + "\n", changes, name: (doc.data && doc.data.meta && doc.data.meta.name) || null };
+    if (!changes.length) return { text, changes, name: (doc.data && doc.data.meta && doc.data.meta.name) || null };
+    // Change only those label strings in the original text, so everything else stays byte for byte.
+    const seq = [];
+    const walk = (o) => {
+      if (!o || typeof o !== "object") return;
+      if (typeof o["@fs_label"] === "string") seq.push({ from: o["@fs_label"], to: decide.get(o) });
+      for (const v of Object.values(o)) walk(v);
+    };
+    walk(doc);
+    let i = 0, bad = false;
+    const out = text.replace(/("@fs_label"\s*:\s*)"((?:[^"\\]|\\.)*)"/g, (all, pre, val) => {
+      const s = seq[i++];
+      if (!s || JSON.parse('"' + val + '"') !== s.from) { bad = true; return all; }
+      return s.to === undefined ? all : pre + JSON.stringify(s.to);
+    });
+    if (bad || i !== seq.length) throw new Error("couldn't match the footswitch labels in this file");
+    return { text: out, changes, name: (doc.data && doc.data.meta && doc.data.meta.name) || null };
   }
+
+  // A setlist (.hls) wraps its presets as base64 of zlib-compressed JSON, with that JSON's CRC32 and size.
+  // Presets or setlist: returns { text, changes, kind, name, count }.
+  const b64dec = (s) => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  const b64enc = (u) => { let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  const hxJson = (o) => JSON.stringify(o, null, 2).replace(/^(\s*"(?:[^"\\]|\\.)*")(: )/gm, "$1 : ") + "\n";
+  async function relabelFile(text, fw, stockNames, newName) {
+    const doc = JSON.parse(text);
+    if (doc.schema !== "L6Setlist" && typeof doc.encoded_data !== "string") {
+      const r = relabelPreset(text, fw, stockNames, newName);
+      return { ...r, kind: "preset", count: 1 };
+    }
+    if (doc.encoding !== "Base64" || !doc.compression || doc.compression.type !== "zlib") throw new Error("this setlist is packed in a way the page doesn't know");
+    const raw = await inflate(b64dec(doc.encoded_data));
+    if (raw.length !== doc.compression.decompressed_size || crc32(raw) !== (doc.compression.crc32 >>> 0)) throw new Error("the setlist's own check (CRC32) doesn't match: the file may be damaged");
+    const inner = new TextDecoder().decode(raw);
+    const r = relabelPreset(inner, fw, stockNames, newName);
+    const parsed = JSON.parse(inner);
+    const count = Array.isArray(parsed.presets) ? parsed.presets.length : 0;
+    const name = (parsed.meta && parsed.meta.name) || (doc.meta && doc.meta.name) || null;
+    if (!r.changes.length) return { text, changes: [], kind: "setlist", name, count };
+    const bytes = new TextEncoder().encode(r.text);
+    const enc = b64enc(await deflate(bytes)), crc = crc32(bytes);
+    // check what we hand back: it must unpack to exactly the relabeled setlist
+    const back = await inflate(b64dec(enc));
+    if (back.length !== bytes.length || crc32(back) !== crc) throw new Error("self-check of the new setlist failed");
+    // the wrapper keeps HX Edit's own layout: only these three values change
+    let n = 0;
+    const out = text
+      .replace(/("encoded_data"\s*:\s*)"(?:[^"\\]|\\.)*"/, (a, p) => (n++, p + JSON.stringify(enc)))
+      .replace(/("crc32"\s*:\s*)\d+/, (a, p) => (n++, p + crc))
+      .replace(/("decompressed_size"\s*:\s*)\d+/, (a, p) => (n++, p + bytes.length));
+    if (n !== 3) throw new Error("couldn't update the setlist wrapper");
+    return { text: out, changes: r.changes, kind: "setlist", name, count };
+  }
+
   function zipMany(files) {             // [{name, data: Uint8Array}] -> stored .zip
     const enc = new TextEncoder(), parts = [], central = [];
     let off = 0;
@@ -911,7 +961,7 @@
     return new Blob([...parts, ...central, end], { type: "application/zip" });
   }
 
-  root.HXRename = { relabelPreset, zipMany, VERSION, open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
+  root.HXRename = { relabelPreset, relabelFile, zipMany, VERSION, open, build, checkName, zipOne, MAXLEN, CATS, FOLDERS, md5: (b) => hex(md5(b)) };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -1110,7 +1160,7 @@
   async function addPresets(files) {
     const bad = [];
     for (const f of files) {
-      if (!/\.hlx$/i.test(f.name)) { bad.push(f.name + " (not a .hlx preset)"); continue; }
+      if (!/\.(hlx|hls)$/i.test(f.name)) { bad.push(f.name + " (not a .hls setlist or .hlx preset)"); continue; }
       const text = await f.text();
       try { JSON.parse(text); } catch (e) { bad.push(f.name + " (not readable)"); continue; }
       presets = presets.filter((p) => p.name !== f.name).concat([{ name: f.name, text }]);
@@ -1118,47 +1168,63 @@
     showPresets(bad); clearBuild();
   }
   const stockNames = (m) => [D.stockShort[m.ni], D.stockLong[m.ni], (D.stockDisp || {})[m.ni]].filter(Boolean);
-  function relabelAll() {               // with the names in step 3 as they are now
+  async function relabelAll() {         // with the names in step 3 as they are now
     const byNi = new Map(); for (const g of groups) for (const m of g.models) byNi.set(m.ni, g);
     const newName = (m) => { const g = byNi.get(m.ni); return g && !g.locked && !H.checkName(g.value) ? g.value : null; };
-    return presets.map((p) => { try { return { ...H.relabelPreset(p.text, fw, stockNames, newName), file: p.name }; } catch (e) { return { file: p.name, err: e.message }; } });
+    const out = [];
+    for (const p of presets) {
+      try { out.push({ ...(await H.relabelFile(p.text, fw, stockNames, newName)), file: p.name }); }
+      catch (e) { out.push({ file: p.name, err: e.message }); }
+    }
+    return out;
   }
-  function showPresets(bad = []) {
+  const what = (x) => x.kind === "setlist" ? `setlist “${x.name || x.file}”, ${x.count} presets` : (x.name || x.file);
+  let showSeq = 0;
+  async function showPresets(bad = []) {
     $("pClear").hidden = !presets.length;
     if (!presets.length && !bad.length) { $("pStatus").hidden = true; $("s4").classList.remove("done"); $("nav4").classList.remove("done"); return; }
     if (!fw) {
-      status("p", "", `${presets.length} preset${presets.length === 1 ? "" : "s"} added`, "Load your firmware in step 2 and the page shows which labels will change." + (bad.length ? " Skipped: " + esc(bad.join(", ")) : ""),
+      status("p", "", `${presets.length} file${presets.length === 1 ? "" : "s"} added`, "Load your firmware in step 2 and the page shows which labels will change." + (bad.length ? " Skipped: " + esc(bad.join(", ")) : ""),
         presets.map((p) => [p.name, "waiting for the firmware"]));
       return;
     }
-    const r = relabelAll(), n = r.reduce((s, x) => s + (x.changes ? x.changes.length : 0), 0);
+    const seq = ++showSeq;
+    const r = await relabelAll();
+    if (seq !== showSeq) return;          // a newer update is on its way
+    const n = r.reduce((s, x) => s + (x.changes ? x.changes.length : 0), 0);
     status("p", bad.length || r.some((x) => x.err) ? "warn" : "ok",
-      `${presets.length} preset${presets.length === 1 ? "" : "s"} added · ${n} label${n === 1 ? "" : "s"} to update`,
+      `${presets.length} file${presets.length === 1 ? "" : "s"} added · ${n} label${n === 1 ? "" : "s"} to update`,
       "They're fixed when you build in step 5, with the names you have then." + (bad.length ? " Skipped: " + esc(bad.join(", ")) + "." : ""),
-      r.map((x) => [x.file, x.err ? "can't read it: " + x.err : x.changes.length ? x.changes.map((c) => c.from + " → " + c.to).join(", ") : "nothing to change"]));
+      r.map((x) => [x.err ? x.file : what(x), x.err ? "can't read it: " + x.err : x.changes.length ? summarizeChanges(x.changes) : "nothing to change"]));
     $("s4").classList.toggle("done", presets.length > 0); $("nav4").classList.toggle("done", presets.length > 0);
+  }
+  function summarizeChanges(ch) {        // "Kinky Boost → Xotic EP Boost ×18, …"
+    const m = new Map(); for (const c of ch) { const k = c.from + " → " + c.to; m.set(k, (m.get(k) || 0) + 1); }
+    const list = [...m].sort((a, b) => b[1] - a[1]).map(([k, n]) => n > 1 ? `${k} ×${n}` : k);
+    return list.length > 8 ? list.slice(0, 8).join(", ") + `, and ${list.length - 8} more` : list.join(", ");
   }
   let pUrl = null;
   async function deliverPresets() {     // after a firmware build: the fixed presets, if any
     const dl = $("pDl"); dl.hidden = true;
     if (!presets.length) return 0;
-    const r = relabelAll().filter((x) => !x.err && x.changes.length);
+    const r = (await relabelAll()).filter((x) => !x.err && x.changes.length);
     if (!r.length) return 0;
     const out = r.map((x) => ({ name: x.file, data: new TextEncoder().encode(x.text) }));
+    const isSet = r.length === 1 && r[0].kind === "setlist";
     const host = await hostDownloads();
     if (pUrl) URL.revokeObjectURL(pUrl);
     dl.hidden = false;
     if (host || out.length > 1) {
-      const zname = out.length === 1 ? out[0].name.replace(/\.hlx$/i, ".zip") : "presets-renamed-labels.zip";
+      const zname = out.length === 1 ? out[0].name.replace(/\.(hlx|hls)$/i, ".zip") : "presets-renamed-labels.zip";
       const blob = H.zipMany(out);
-      dl.textContent = `Download presets (${out.length})`;
+      dl.textContent = isSet ? "Download setlist" : `Download presets (${out.length})`;
       if (host) {
         dl.removeAttribute("href"); dl.removeAttribute("download");
         dl.onclick = async (ev) => { ev.preventDefault(); try { await host.save({ filename: zname, data: blob }); } catch (e2) {} };
       } else { pUrl = URL.createObjectURL(blob); dl.onclick = null; dl.href = pUrl; dl.download = zname; }
     } else {
       pUrl = URL.createObjectURL(new Blob([out[0].data], { type: "application/json" }));
-      dl.onclick = null; dl.href = pUrl; dl.download = out[0].name; dl.textContent = "Download preset";
+      dl.onclick = null; dl.href = pUrl; dl.download = out[0].name; dl.textContent = isSet ? "Download setlist" : "Download preset";
     }
     return out.length;
   }
@@ -1206,8 +1272,8 @@
       }
       const np = await deliverPresets();
       status("b", "ok", "Built and checked", `${r.changed} models renamed. The file reopened cleanly and every checksum passes.` +
-        (np ? ` ${np} preset${np === 1 ? "" : "s"} with updated labels are ready too: import them in step 7.` : ""),
-        [["File", out], ["Size", (r.bytes.length / 1048576).toFixed(2) + " MB"], ["MD5", r.md5], ...(np ? [["Presets", np + " fixed"]] : [])]);
+        (np ? ` Your ${np === 1 ? "file" : np + " files"} with updated footswitch labels ${np === 1 ? "is" : "are"} ready too: import ${np === 1 ? "it" : "them"} in step 7.` : ""),
+        [["File", out], ["Size", (r.bytes.length / 1048576).toFixed(2) + " MB"], ["MD5", r.md5], ...(np ? [["Presets", np + (np === 1 ? " file" : " files") + " fixed"]] : [])]);
       $("s5").classList.add("done"); $("nav5").classList.add("done");
     } catch (err) {
       status("b", "bad", "Build stopped", esc(err.message) + "<br>Nothing was saved.");

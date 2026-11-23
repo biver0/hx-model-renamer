@@ -4,19 +4,19 @@ A one-page web app that renames the models on a Line 6 **HX Effects**, **HX Stom
 
 **Use it:** https://biver0.github.io/hx-model-renamer/
 
-- Tick off the **Get ready** checklist (unit, HX Edit and Line 6 Updater, a backup, your presets exported from HX Edit, the firmware file).
+- Tick off the **Get ready** checklist (unit, HX Edit and Line 6 Updater, a backup, your setlist exported from HX Edit, the firmware file).
 - Drop in your `.hxf` (stock 3.80.0, the [NAM A2 Lite](https://github.com/nocaseguy/hx-stomp-nam-lite) build, or a file you renamed here before).
 - Edit names (16 characters max). Suggested names for effects follow the HX Effects manual's "Based On" list; amps, preamps and cabs keep Line 6's names unless you change them.
-- Optionally add your exported `.hlx` presets, so their footswitch labels get the new names.
+- Optionally add your exported setlist (`.hls`) or presets (`.hlx`), so their footswitch labels get the new names.
 - Build: the page rewrites only model names, fixes every checksum, re-opens the result to check it, and gives you the new `.hxf` (plus your fixed presets).
-- Install the firmware with Line 6 Updater, then import the fixed presets in HX Edit.
+- Install the firmware with Line 6 Updater, then import the fixed setlist (or presets) in HX Edit.
 
 Everything runs in your browser. No firmware is uploaded, and none is included in this repo.
 
 ## Notes
 
 - Unofficial and experimental. Not made or supported by Line 6. Install modified firmware at your own risk.
-- Presets made before renaming keep Line 6's names on their footswitch labels (saved in the preset); new blocks get the new names. The page updates older presets' labels: export them from HX Edit as `.hlx`, add them in step 4, and import the fixed ones in step 7.
+- Presets made before renaming keep Line 6's names on their footswitch labels (saved in the preset); new blocks get the new names. The page updates older presets' labels: export your setlist from HX Edit (`.hls`), add it in step 4, and import the fixed setlist in step 7. Single `.hlx` presets work too.
 - HX Edit keeps showing Line 6's names (it has its own model list). Presets are unaffected: they store model IDs, not names.
 - The NAM A2 Lite block's name is locked.
 - Tested in software on all six files (stock and NAM A2 Lite for each unit): every checksum passes nocaseguy's verifier, only name bytes change, and setting the names back restores the original byte for byte. Installed on hardware so far: HX Effects.
@@ -37,6 +37,10 @@ New display names are added to the database's string table and each renamed mode
 ## Changelog
 
 Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
+
+### 1.4.0 (2026-11-23)
+- **Setlists:** step 4 takes the setlist you export from HX Edit (`.hls`, every preset in slot order) and gives back a fixed setlist to import, so all your presets are updated in one go. Only footswitch labels change; every other byte of the presets stays as HX Edit wrote it, and the setlist's CRC32 and size are updated.
+- Single presets (`.hlx`) are now edited the same way: only the label text changes.
 
 ### 1.3.0 (2026-11-22)
 - The page now walks through everything in seven steps: **Get ready** (a checklist, after nocaseguy's setup page: unit, HX Edit and Line 6 Updater, backup, export your presets, firmware file), load firmware, name models, **add your presets**, build, install, **import your presets**.

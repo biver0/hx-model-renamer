@@ -38,13 +38,13 @@
   .warning b { color: var(--warn); }
 
   nav.steps-nav { position: sticky; top: 0; z-index: 3; margin-inline: -4px; padding: 8px 4px; background: var(--bg); }
-  nav.steps-nav ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  nav.steps-nav ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   nav.steps-nav a { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: 8px; text-decoration: none;
     color: var(--muted); font-size: 12.5px; line-height: 1.2; text-align: center; border: 1px solid var(--line); background: var(--panel); }
   nav.steps-nav a:hover { border-color: var(--accent); color: var(--ink); }
   nav.steps-nav .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 700 12px/1 var(--font-mono); }
   nav.steps-nav a.done .n { background: var(--ok-soft); color: var(--ok); }
-  @media (max-width: 560px) { nav.steps-nav .t { display: none; } }
+  @media (max-width: 760px) { nav.steps-nav .t { display: none; } }
 
   section.step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 22px 24px; display: grid; gap: 14px; scroll-margin-top: 72px; }
   @media (max-width: 520px) { section.step { padding: 18px 16px 20px; } }
@@ -59,6 +59,11 @@
   ol.how li::marker { color: var(--accent); font-weight: 700; }
   ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 
+  .checks { display: grid; gap: 8px; }
+  .checks label { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 11px 13px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .checks label:hover { border-color: var(--muted); }
+  .checks input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--ok); }
+  .checks small { display: block; color: var(--muted); font-size: 13.5px; }
   .drop { position: relative; display: grid; place-items: center; gap: 8px; text-align: center; padding: 30px 20px; border: 2px dashed var(--line);
     border-radius: var(--r); background: var(--bg); cursor: pointer; transition: border-color .15s, background .15s; }
   .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
@@ -144,18 +149,20 @@
   <header>
     <span class="eyebrow">HX Effects · HX Stomp · HX Stomp XL · Model Renamer <span id="ver"></span></span>
     <h1>Rename the models on your HX</h1>
-    <p class="lede">Drop in your firmware and give every model a name that says what it is: <b>Boss SD-1</b> instead of <b>Stupor OD</b>. Then download a new <b>.hxf</b> with every checksum fixed. It all runs in this browser. Nothing is uploaded anywhere.</p>
+    <p class="lede">Drop in your firmware and give every model a name that says what it is: <b>Boss SD-1</b> instead of <b>Stupor OD</b>. Then download a new <b>.hxf</b> with every checksum fixed, plus your presets with their footswitch labels updated. It all runs in this browser. Nothing is uploaded anywhere.</p>
   </header>
 
   <div class="warning"><b>Unofficial and experimental.</b> This isn't made or supported by Line 6, and installing modified firmware is at your own risk. Only the model names change: no sound, preset or NAM code is touched. If anything goes wrong, the <a href="#recovery">Recovery</a> steps put the stock firmware back.</div>
 
   <nav class="steps-nav" aria-label="Steps">
     <ol>
-      <li><a href="#s1" id="nav1"><span class="n">1</span><span class="t">Load firmware</span></a></li>
-      <li><a href="#s2" id="nav2"><span class="n">2</span><span class="t">Name models</span></a></li>
-      <li><a href="#s3" id="nav3"><span class="n">3</span><span class="t">Build</span></a></li>
-      <li><a href="#s4" id="nav4"><span class="n">4</span><span class="t">Install</span></a></li>
-      <li><a href="#s5" id="nav5"><span class="n">5</span><span class="t">Fix presets</span></a></li>
+      <li><a href="#s1" id="nav1"><span class="n">1</span><span class="t">Get ready</span></a></li>
+      <li><a href="#s2" id="nav2"><span class="n">2</span><span class="t">Load firmware</span></a></li>
+      <li><a href="#s3" id="nav3"><span class="n">3</span><span class="t">Name models</span></a></li>
+      <li><a href="#s4" id="nav4"><span class="n">4</span><span class="t">Add presets</span></a></li>
+      <li><a href="#s5" id="nav5"><span class="n">5</span><span class="t">Build</span></a></li>
+      <li><a href="#s6" id="nav6"><span class="n">6</span><span class="t">Install</span></a></li>
+      <li><a href="#s7" id="nav7"><span class="n">7</span><span class="t">Import presets</span></a></li>
     </ol>
   </nav>
 
@@ -163,6 +170,32 @@
   <section class="step" id="s1">
     <div class="step-head">
       <span class="n">1</span>
+      <h2>Get ready</h2>
+      <p>About 15 minutes in all. Tick these off as you go.</p>
+    </div>
+    <div class="checks" id="checks">
+      <label><input type="checkbox"><span><span>I have an <b>HX Effects</b>, an <b>HX Stomp</b> or an <b>HX Stomp XL</b>.</span>
+        <small>Not the Helix Floor, LT or Rack: their firmware is a different design. A renamed file has been installed on an HX Effects so far; the Stomp and XL builds pass every software check.</small></span></label>
+      <label><input type="checkbox"><span><span><b>HX Edit</b> and <b>Line 6 Updater</b> are installed on this computer.</span>
+        <small>Both are free from Line 6. Line 6 Updater installs the firmware; HX Edit exports and imports your presets.</small></span></label>
+      <label><input type="checkbox"><span><span>I backed up my presets and IRs in HX Edit.</span>
+        <small>Use <b>Backup</b> in HX Edit. A firmware install normally keeps them, but a backup costs a minute.</small></span></label>
+      <label><input type="checkbox"><span><span>I exported the presets I use from HX Edit, and noted which slot each one is in.</span>
+        <small>Select them in HX Edit's preset list and choose <b>Export</b>; each one is saved as a <code>.hlx</code> file. Presets save each footswitch's label, so older presets keep Line 6's names on the scribble strips. Step 4 fixes these files and step 7 puts them back. Skip this if you'll only make new presets.</small></span></label>
+      <label><input type="checkbox"><span><span>I have the 3.80.0 firmware file for my unit: Line 6's own, or the NAM A2 Lite build.</span>
+        <small>One of the files below, or the same file with <code>_NAM_A2_Lite</code> in its name from <a href="https://nocaseguy.github.io/hx-stomp-nam-lite/web/">nocaseguy's NAM A2 Lite setup</a>. The page checks it before it changes anything.</small></span></label>
+    </div>
+    <div class="files">
+      <div><b>HX Effects</b><code>HX_Effects_v3.80.0_0xd97239907.hxf</code></div>
+      <div><b>HX Stomp</b><code>HX_Stomp_v3.80.0_0x103966115.hxf</code></div>
+      <div><b>HX Stomp XL</b><code>HX_Stomp_XL_v3.80.0_0x103966115.hxf</code></div>
+    </div>
+    <p class="tip">Keep Line 6's stock file somewhere safe. You need it for <a href="#recovery">Recovery</a> and to go back to the normal names.</p>
+  </section>
+
+<section class="step" id="s2">
+    <div class="step-head">
+      <span class="n">2</span>
       <h2>Load your firmware</h2>
       <p>A 3.80.0 file for the HX Effects, HX Stomp or HX Stomp XL: stock, the NAM A2 Lite build, or one you renamed here before.</p>
     </div>
@@ -181,10 +214,9 @@
     </div>
   </section>
 
-  <!-- 2 -->
-  <section class="step" id="s2">
+<section class="step" id="s3">
     <div class="step-head">
-      <span class="n">2</span>
+      <span class="n">3</span>
       <h2>Name the models</h2>
       <p>Up to 16 characters each. The suggested names follow the HX Effects manual's "Based On" list, and Line 6 Originals keep their names.</p>
     </div>
@@ -206,16 +238,39 @@
     </div>
   </section>
 
-  <!-- 3 -->
-  <section class="step" id="s3">
+  <!-- 4 -->
+  <section class="step" id="s4">
     <div class="step-head">
-      <span class="n">3</span>
-      <h2>Build the renamed firmware</h2>
-      <p>Takes a second or two. The page checks the new file from scratch before it gives it to you.</p>
+      <span class="n">4</span>
+      <h2>Add your presets</h2>
+      <p>Optional. The presets you exported from HX Edit in step 1, so their footswitch labels get your new names.</p>
+    </div>
+    <label class="drop" id="pDrop">
+      <svg class="jack" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="8" y="10" width="32" height="28" rx="3"/><circle cx="17" cy="24" r="4"/><circle cx="31" cy="24" r="4"/>
+      </svg>
+      <strong>Drop your .hlx presets here</strong>
+      <small>one or many · only labels that are still a stock Line 6 name change; labels you typed stay · they stay on this computer</small>
+      <input id="pPick" type="file" accept=".hlx" multiple>
+    </label>
+    <div class="status" id="pStatus" hidden>
+      <span class="title" id="pTitle"></span>
+      <p id="pText"></p>
+      <div class="files" id="pFiles"></div>
+    </div>
+    <div class="row-actions"><button class="btn" id="pClear" type="button" hidden>Remove presets</button></div>
+  </section>
+
+<section class="step" id="s5">
+    <div class="step-head">
+      <span class="n">5</span>
+      <h2>Build</h2>
+      <p>Your renamed firmware, plus your fixed presets if you added any. The page checks the new firmware from scratch before it gives it to you.</p>
     </div>
     <div class="row-actions">
       <button class="btn primary big" id="buildBtn" type="button" disabled>Build renamed .hxf</button>
       <a class="btn big" id="dlBtn" hidden href="#">Download</a>
+      <a class="btn big primary" id="pDl" hidden href="#">Download presets</a>
     </div>
     <div class="status" id="bStatus" hidden>
       <span class="title" id="bTitle"></span>
@@ -224,11 +279,10 @@
     </div>
   </section>
 
-  <!-- 4 -->
-  <section class="step" id="s4">
+<section class="step" id="s6">
     <div class="step-head">
-      <span class="n">4</span>
-      <h2>Install it</h2>
+      <span class="n">6</span>
+      <h2>Install the firmware</h2>
       <p>The same way as any Line 6 update.</p>
     </div>
     <ol class="how">
@@ -237,38 +291,26 @@
       <li>Let it finish, and let the unit restart on its own.</li>
       <li>Open the model list: <b>Distortion</b> should now show <b>Boss SD-1</b> where <b>Stupor OD</b> was.</li>
     </ol>
-    <p class="tip"><b>Footswitch labels in your existing presets keep Line 6's names.</b> A preset saves each footswitch's label when its block is assigned, so on presets made before renaming, the scribble strips show the old name on switches that aren't selected. Blocks you add from now on get the new names. Step 5 below updates them for you.</p>
+    <p class="tip"><b>Footswitch labels in your existing presets keep Line 6's names.</b> A preset saves each footswitch's label when its block is assigned, so on presets made before renaming, the scribble strips show the old name on switches that aren't selected. Blocks you add from now on get the new names. If you added your presets in step 4, step 7 puts the fixed ones back.</p>
     <p class="tip"><b>HX Edit still shows Line 6's names.</b> It reads them from its own model list on your computer, not from the unit. Your presets are fine either way: they store each model's ID, not its name.</p>
   </section>
 
-  <!-- 5 -->
-  <section class="step" id="s5">
+  <!-- 7 -->
+  <section class="step" id="s7">
     <div class="step-head">
-      <span class="n">5</span>
-      <h2>Fix footswitch labels in older presets</h2>
-      <p>Optional. Presets made before renaming keep Line 6's names on their footswitch labels.</p>
+      <span class="n">7</span>
+      <h2>Import your presets</h2>
+      <p>If you added presets in step 4. Do this after the firmware is installed.</p>
     </div>
-    <p>A preset saves each footswitch's label when its block is assigned, so on older presets the scribble strips show the old name on switches that aren't selected. This updates those labels to the names in step 2.</p>
     <ol class="how">
-      <li>In HX Edit, export the presets you want to fix (<b>Export</b> in the preset list; you can select several).</li>
-      <li>Drop the <code>.hlx</code> files here. Your firmware from step 1 has to be loaded.</li>
-      <li>Download the fixed presets, then in HX Edit import each one back onto its own slot (drag it onto the slot, or select the slot and choose <b>Import</b>).</li>
+      <li>If you got a <code>.zip</code>, open it to get the <code>.hlx</code> files inside.</li>
+      <li>Open <b>HX Edit</b> with your unit connected.</li>
+      <li>For each fixed preset, select the slot it came from in the preset list, choose <b>Import</b>, and pick its file. You can also drag the file onto the slot. Importing replaces what's in that slot.</li>
+      <li>Select the preset on the unit: switches that aren't selected now show your names too.</li>
     </ol>
-    <label class="drop" id="pDrop">
-      <svg class="jack" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="8" y="10" width="32" height="28" rx="3"/><circle cx="17" cy="24" r="4"/><circle cx="31" cy="24" r="4"/>
-      </svg>
-      <strong>Drop .hlx presets here</strong>
-      <small>one or many · only labels that are still a stock Line 6 name change; labels you typed stay</small>
-      <input id="pPick" type="file" accept=".hlx" multiple>
-    </label>
-    <div class="status" id="pStatus" hidden>
-      <span class="title" id="pTitle"></span>
-      <p id="pText"></p>
-      <div class="files" id="pFiles"></div>
-    </div>
-    <div class="row-actions"><a class="btn big primary" id="pDl" hidden href="#">Download</a></div>
+    <p class="tip">Only presets with a label to change come back from step 5; the others are already fine. Presets you make from now on get the new names on their own.</p>
   </section>
+
 
   <section class="step recovery" id="recovery">
     <div class="step-head">
@@ -481,7 +523,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
-  const VERSION = "1.2.0";
+  const VERSION = "1.3.0";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -926,13 +968,14 @@
       status("fw", "ok", "Ready: " + (fw.known || (fw.unit + " 3.80.0" + (renamed ? ", renamed before" : " (checks pass)"))),
         renamed ? `This file already has ${renamed} custom names. They're shown below as they are.` : "All its checksums pass. " + fw.models.length + " models found.",
         [["File", file.name], ["MD5", fw.fileMd5], ...(fw.builtBy ? [["Renamed by", "version " + fw.builtBy]] : []), ...(isFx() ? [] : [["Tested", "not yet on this unit: the page reads it, but no renamed file has been installed on one"]]), ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
-      $("s1").classList.add("done"); $("nav1").classList.add("done");
+      $("s2").classList.add("done"); $("nav2").classList.add("done");
       buildGroups(renamed === 0);
+      showPresets();
     } catch (err) {
       fw = null;
       status("fw", "bad", "Can't use this file", esc(err.message));
       $("editor").hidden = true; $("noFw").hidden = false; $("buildBtn").disabled = true;
-      $("s1").classList.remove("done"); $("nav1").classList.remove("done");
+      $("s2").classList.remove("done"); $("nav2").classList.remove("done");
     } finally { drop.classList.remove("busy"); }
   }
 
@@ -1006,7 +1049,7 @@
     const bad = groups.filter((g) => !g.locked && H.checkName(g.value)).length;
     $("summary").innerHTML = `${ch} of ${groups.length} names changed` + (bad ? ` · <b style="color:var(--bad)">${bad} to fix</b>` : "");
     $("buildBtn").disabled = !fw || bad > 0;
-    if (ch) { $("s2").classList.add("done"); $("nav2").classList.add("done"); } else { $("s2").classList.remove("done"); $("nav2").classList.remove("done"); }
+    if (ch) { $("s3").classList.add("done"); $("nav3").classList.add("done"); } else { $("s3").classList.remove("done"); $("nav3").classList.remove("done"); }
   }
 
   function save() { const o = {}; for (const g of groups) if (!g.locked) for (const m of g.models) o[m.ni] = g.value; store.set(o); }
@@ -1021,7 +1064,7 @@
     row.querySelector(".undo").disabled = !changed;
     let el = row.querySelector(".err");
     if (err) { if (!el) { el = document.createElement("span"); el.className = "err"; row.appendChild(el); } el.textContent = err; } else if (el) el.remove();
-    save(); summary(); clearBuild();
+    save(); summary(); clearBuild(); if (presets.length) showPresets();
   });
   $("list").addEventListener("click", (e) => {
     if (!e.target.classList.contains("undo")) return;
@@ -1051,53 +1094,73 @@
   });
   function alertBox(msg, bad) { $("summary").innerHTML = `<span style="color:var(${bad ? "--bad" : "--ok"})">${esc(msg)}</span>`; setTimeout(summary, 4000); }
 
-  // ---- step 5: presets ----
+  // ---- step 1: the checklist ----
+  const boxes = [...$("checks").querySelectorAll("input")];
+  const checkStep1 = () => { const all = boxes.every((x) => x.checked); $("s1").classList.toggle("done", all); $("nav1").classList.toggle("done", all); };
+  boxes.forEach((x) => x.addEventListener("change", checkStep1));
+
+  // ---- step 4: presets (kept here until the build) ----
+  let presets = [];                     // [{ name, text }]
   const pDrop = $("pDrop");
   ["dragenter", "dragover"].forEach((ev) => pDrop.addEventListener(ev, (e) => { e.preventDefault(); pDrop.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => pDrop.addEventListener(ev, () => pDrop.classList.remove("over")));
-  pDrop.addEventListener("drop", (e) => { e.preventDefault(); relabel([...e.dataTransfer.files]); });
-  $("pPick").addEventListener("change", (e) => { relabel([...e.target.files]); e.target.value = ""; });
-  let pUrl = null;
-  async function relabel(files) {
-    $("pDl").hidden = true;
-    if (!fw) { status("p", "bad", "Load your firmware first", "Step 1 needs the firmware these presets will run on, so the page knows each model."); return; }
-    files = files.filter((f) => /\.hlx$/i.test(f.name));
-    if (!files.length) { status("p", "bad", "No .hlx presets", "Export presets from HX Edit and drop the .hlx files."); return; }
-    const byNi = new Map(); for (const g of groups) for (const m of g.models) byNi.set(m.ni, g);
-    const stockNames = (m) => [D.stockShort[m.ni], D.stockLong[m.ni], (D.stockDisp || {})[m.ni]].filter(Boolean);
-    const newName = (m) => { const g = byNi.get(m.ni); return g && !g.locked && !H.checkName(g.value) ? g.value : null; };
-    const out = [], rows = [], bad = [];
-    let total = 0;
+  pDrop.addEventListener("drop", (e) => { e.preventDefault(); addPresets([...e.dataTransfer.files]); });
+  $("pPick").addEventListener("change", (e) => { addPresets([...e.target.files]); e.target.value = ""; });
+  $("pClear").addEventListener("click", () => { presets = []; showPresets(); clearBuild(); });
+  async function addPresets(files) {
+    const bad = [];
     for (const f of files) {
-      try {
-        const r = H.relabelPreset(await f.text(), fw, stockNames, newName);
-        total += r.changes.length;
-        rows.push([r.name || f.name, r.changes.length ? r.changes.map((c) => c.from + " → " + c.to).join(", ") : "nothing to change"]);
-        if (r.changes.length) out.push({ name: f.name, data: new TextEncoder().encode(r.text) });
-      } catch (err) { bad.push(f.name + ": " + err.message); }
+      if (!/\.hlx$/i.test(f.name)) { bad.push(f.name + " (not a .hlx preset)"); continue; }
+      const text = await f.text();
+      try { JSON.parse(text); } catch (e) { bad.push(f.name + " (not readable)"); continue; }
+      presets = presets.filter((p) => p.name !== f.name).concat([{ name: f.name, text }]);
     }
-    if (!out.length) {
-      status("p", bad.length ? "bad" : "ok", bad.length ? "Couldn't read some presets" : "Nothing to change",
-        bad.length ? esc(bad.join("; ")) : "Every footswitch label is already custom or up to date.", rows);
+    showPresets(bad); clearBuild();
+  }
+  const stockNames = (m) => [D.stockShort[m.ni], D.stockLong[m.ni], (D.stockDisp || {})[m.ni]].filter(Boolean);
+  function relabelAll() {               // with the names in step 3 as they are now
+    const byNi = new Map(); for (const g of groups) for (const m of g.models) byNi.set(m.ni, g);
+    const newName = (m) => { const g = byNi.get(m.ni); return g && !g.locked && !H.checkName(g.value) ? g.value : null; };
+    return presets.map((p) => { try { return { ...H.relabelPreset(p.text, fw, stockNames, newName), file: p.name }; } catch (e) { return { file: p.name, err: e.message }; } });
+  }
+  function showPresets(bad = []) {
+    $("pClear").hidden = !presets.length;
+    if (!presets.length && !bad.length) { $("pStatus").hidden = true; $("s4").classList.remove("done"); $("nav4").classList.remove("done"); return; }
+    if (!fw) {
+      status("p", "", `${presets.length} preset${presets.length === 1 ? "" : "s"} added`, "Load your firmware in step 2 and the page shows which labels will change." + (bad.length ? " Skipped: " + esc(bad.join(", ")) : ""),
+        presets.map((p) => [p.name, "waiting for the firmware"]));
       return;
     }
-    status("p", "ok", `${total} label${total === 1 ? "" : "s"} updated in ${out.length} preset${out.length === 1 ? "" : "s"}`,
-      (bad.length ? `Skipped: ${esc(bad.join("; "))}. ` : "") + "Import each one back onto its own slot in HX Edit.", rows);
-    const dl = $("pDl"); dl.hidden = false;
+    const r = relabelAll(), n = r.reduce((s, x) => s + (x.changes ? x.changes.length : 0), 0);
+    status("p", bad.length || r.some((x) => x.err) ? "warn" : "ok",
+      `${presets.length} preset${presets.length === 1 ? "" : "s"} added · ${n} label${n === 1 ? "" : "s"} to update`,
+      "They're fixed when you build in step 5, with the names you have then." + (bad.length ? " Skipped: " + esc(bad.join(", ")) + "." : ""),
+      r.map((x) => [x.file, x.err ? "can't read it: " + x.err : x.changes.length ? x.changes.map((c) => c.from + " → " + c.to).join(", ") : "nothing to change"]));
+    $("s4").classList.toggle("done", presets.length > 0); $("nav4").classList.toggle("done", presets.length > 0);
+  }
+  let pUrl = null;
+  async function deliverPresets() {     // after a firmware build: the fixed presets, if any
+    const dl = $("pDl"); dl.hidden = true;
+    if (!presets.length) return 0;
+    const r = relabelAll().filter((x) => !x.err && x.changes.length);
+    if (!r.length) return 0;
+    const out = r.map((x) => ({ name: x.file, data: new TextEncoder().encode(x.text) }));
     const host = await hostDownloads();
     if (pUrl) URL.revokeObjectURL(pUrl);
+    dl.hidden = false;
     if (host || out.length > 1) {
-      const zname = out.length === 1 ? out[0].name.replace(/\.hlx$/i, ".zip") : "presets-relabeled.zip";
+      const zname = out.length === 1 ? out[0].name.replace(/\.hlx$/i, ".zip") : "presets-renamed-labels.zip";
       const blob = H.zipMany(out);
-      dl.textContent = "Download " + zname;
+      dl.textContent = `Download presets (${out.length})`;
       if (host) {
         dl.removeAttribute("href"); dl.removeAttribute("download");
         dl.onclick = async (ev) => { ev.preventDefault(); try { await host.save({ filename: zname, data: blob }); } catch (e2) {} };
       } else { pUrl = URL.createObjectURL(blob); dl.onclick = null; dl.href = pUrl; dl.download = zname; }
     } else {
       pUrl = URL.createObjectURL(new Blob([out[0].data], { type: "application/json" }));
-      dl.onclick = null; dl.href = pUrl; dl.download = out[0].name; dl.textContent = "Download " + out[0].name;
+      dl.onclick = null; dl.href = pUrl; dl.download = out[0].name; dl.textContent = "Download preset";
     }
+    return out.length;
   }
 
   // ---- step 3 ----
@@ -1109,7 +1172,7 @@
     return hostP;
   }
   function alertBuild(msg) { $("bText").textContent = msg; }
-  function clearBuild() { $("dlBtn").hidden = true; $("bStatus").hidden = true; $("s3").classList.remove("done"); $("nav3").classList.remove("done"); }
+  function clearBuild() { $("pDl").hidden = true; $("dlBtn").hidden = true; $("bStatus").hidden = true; $("s5").classList.remove("done"); $("nav5").classList.remove("done"); }
   $("buildBtn").addEventListener("click", async () => {
     const btn = $("buildBtn"); btn.disabled = true; clearBuild();
     status("b", "", "Building…", "Writing names, fixing checksums, then re-checking the whole file.");
@@ -1141,9 +1204,11 @@
         url = URL.createObjectURL(new Blob([r.bytes], { type: "application/octet-stream" }));
         dl.onclick = null; dl.href = url; dl.download = out; dl.textContent = "Download " + out;
       }
-      status("b", "ok", "Built and checked", `${r.changed} models renamed. The file reopened cleanly and every checksum passes.`,
-        [["File", out], ["Size", (r.bytes.length / 1048576).toFixed(2) + " MB"], ["MD5", r.md5]]);
-      $("s3").classList.add("done"); $("nav3").classList.add("done");
+      const np = await deliverPresets();
+      status("b", "ok", "Built and checked", `${r.changed} models renamed. The file reopened cleanly and every checksum passes.` +
+        (np ? ` ${np} preset${np === 1 ? "" : "s"} with updated labels are ready too: import them in step 7.` : ""),
+        [["File", out], ["Size", (r.bytes.length / 1048576).toFixed(2) + " MB"], ["MD5", r.md5], ...(np ? [["Presets", np + " fixed"]] : [])]);
+      $("s5").classList.add("done"); $("nav5").classList.add("done");
     } catch (err) {
       status("b", "bad", "Build stopped", esc(err.message) + "<br>Nothing was saved.");
     } finally { btn.disabled = false; summary(); }

@@ -6,7 +6,7 @@ A one-page web app that renames the models on a Line 6 **HX Effects**, **HX Stom
 
 - Tick off the **Get ready** checklist (unit, HX Edit and Line 6 Updater, a backup, your setlist exported from HX Edit, the firmware file).
 - Drop in your `.hxf` (stock 3.80.0, the [NAM A2 Lite](https://github.com/nocaseguy/hx-stomp-nam-lite) build, or a file you renamed here before).
-- Edit names (16 characters max). Suggested names for effects follow the HX Effects manual's "Based On" list; amps, preamps and cabs keep Line 6's names unless you change them.
+- Edit names (16 characters max). Suggested names for effects follow the HX Effects manual's "Based On" list; amps, preamps and cabs follow helixhelp.com's model list. Line 6 Originals keep their names.
 - Optionally add your exported setlist (`.hls`) or presets (`.hlx`), so their footswitch labels get the new names.
 - Build: the page rewrites only model names, fixes every checksum, re-opens the result to check it, and gives you the new `.hxf` (plus your fixed presets).
 - Install the firmware with Line 6 Updater, then import the fixed setlist (or presets) in HX Edit.
@@ -22,7 +22,7 @@ Everything runs in your browser. No firmware is uploaded, and none is included i
 - Tested in software on all six files (stock and NAM A2 Lite for each unit): every checksum passes nocaseguy's verifier, only name bytes change, and setting the names back restores the original byte for byte. Installed on hardware so far: HX Effects (renamed firmware, plus a fixed setlist imported through HX Edit: unselected footswitches show the new names).
 - **Recovery:** start the unit in update mode and install that unit's stock 3.80.0 `.hxf` with Line 6 Updater. HX Effects: hold the right arrow (**>**) at power-on. HX Stomp / XL: hold **Page Right** at power-on (nocaseguy's README); Line 6's manual says footswitches 2 and 3.
 
-Firmware layout details come from [nocaseguy/hx-stomp-nam-lite](https://github.com/nocaseguy/hx-stomp-nam-lite). Product names are trademarks of their owners, used only to say what each model is based on.
+Firmware layout details come from [nocaseguy/hx-stomp-nam-lite](https://github.com/nocaseguy/hx-stomp-nam-lite). Amp, preamp and cab "Based on" information comes from [helixhelp.com/models](https://helixhelp.com/models) by Jason Shimkoski. Product names are trademarks of their owners, used only to say what each model is based on.
 
 ## What changes
 
@@ -37,6 +37,11 @@ New display names are added to the database's string table and each renamed mode
 ## Changelog
 
 Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
+
+### 1.5.0 (2026-11-23)
+- **Amps, preamps and cabs get suggested names** on the HX Stomp and XL (about 300 more), based on the "Based on" list at [helixhelp.com/models](https://helixhelp.com/models). Each one shows what it's based on in step 3. Line 6 Originals keep their names.
+- Acoustic Sim gets a suggestion too (BOSS AC-2).
+- Fixed: setting a model back to Line 6's name works when Line 6's display name is longer than 16 characters (Mandarin Bass 200).
 
 ### 1.4.0 (2026-11-23)
 - **Setlists:** step 4 takes the setlist you export from HX Edit (`.hls`, every preset in slot order) and gives back a fixed setlist to import, so all your presets are updated in one go. Only footswitch labels change; every other byte of the presets stays as HX Edit wrote it, and the setlist's CRC32 and size are updated.

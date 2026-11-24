@@ -524,7 +524,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
-  const VERSION = "1.5.0";
+  const VERSION = "1.5.1";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -1055,7 +1055,10 @@
       const sug = g.models.map((m) => D.proposed[m.ni]).find(Boolean);
       g.suggested = sug || g.stock;
       let v = g.cur;
-      if (saved && saved[g.models[0].ni] !== undefined) v = saved[g.models[0].ni];
+      const sv = saved && saved.names ? saved.names[g.models[0].ni] : saved ? saved[g.models[0].ni] : undefined;
+      // Names saved before 1.5.1 held every row; a row still at the Line 6 name there was never edited, so it gets today's suggestion.
+      const legacyUntouched = saved && !saved.names && sv === g.stock;
+      if (sv !== undefined && !legacyUntouched) v = sv;
       else if (fresh) v = g.suggested;
       g.value = g.locked ? g.cur : v;
     }
@@ -1103,7 +1106,8 @@
     if (ch) { $("s3").classList.add("done"); $("nav3").classList.add("done"); } else { $("s3").classList.remove("done"); $("nav3").classList.remove("done"); }
   }
 
-  function save() { const o = {}; for (const g of groups) if (!g.locked) for (const m of g.models) o[m.ni] = g.value; store.set(o); }
+  // Only names that differ from the suggestion are saved, so a later version's new suggestions still show up.
+  function save() { const o = {}; for (const g of groups) if (!g.locked && g.value !== g.suggested) for (const m of g.models) o[m.ni] = g.value; store.set({ v: 2, names: o }); }
 
   $("list").addEventListener("input", (e) => {
     const row = e.target.closest(".mrow"); if (!row || e.target.tagName !== "INPUT") return;

@@ -38,6 +38,9 @@ New display names are added to the database's string table and each renamed mode
 
 Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
 
+### 1.5.1 (2026-11-23)
+- Fixed: if you had used the page before 1.5.0, the names it saved kept the amps, preamps and cabs at Line 6's names, so the new suggestions didn't show up and weren't built. The page now saves only the names you edit.
+
 ### 1.5.0 (2026-11-23)
 - **Amps, preamps and cabs get suggested names** on the HX Stomp and XL (about 300 more), based on the "Based on" list at [helixhelp.com/models](https://helixhelp.com/models). Each one shows what it's based on in step 3. Line 6 Originals keep their names.
 - Acoustic Sim gets a suggestion too (BOSS AC-2).

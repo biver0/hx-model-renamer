@@ -38,6 +38,11 @@ New display names are added to the database's string table and each renamed mode
 
 Versions follow major.minor.patch: a bug fix bumps the last number, a new feature the middle one. The page shows its version at the top, renamed files are named `…_Renamed_<version>.hxf`, and the page tells you which version renamed a file you drop in.
 
+### 1.5.2 (2026-11-24)
+- Works on HXtra builds (checked with HXtra 1.2.1 for the HX Stomp): the page opens them, renames them and every check passes, with NAM A2 Lite and HXtra's other changes untouched. HXtra's Real block names sets the list names but not the display names; building here sets those too.
+- A file whose display names are still Line 6's is no longer described only as an old build of this page.
+- The "not tested on this unit" note now shows only for the HX Stomp XL.
+
 ### 1.5.1 (2026-11-23)
 - Fixed: if you had used the page before 1.5.0, the names it saved kept the amps, preamps and cabs at Line 6's names, so the new suggestions didn't show up and weren't built. The page now saves only the names you edit.
 

@@ -524,7 +524,7 @@
   // Strings: [n][len] then n records (relOff, crc32, len) then NUL-terminated data. Models: 56-byte descriptors;
   // word 0/1 = meta count/offset (12-byte records key, type, value; type 7 = string index), word 2 = the
   // model's name string, which is also its Entry 0 name index.
-  const VERSION = "1.5.1";
+  const VERSION = "1.5.2";
   const E3_MAGIC = 0x4023245e, E3_MAX = 0x800 * 512 - 512, TAG = "hx-model-renamer:";
   const align = (n, a) => Math.ceil(n / a) * a;
   function e3Parse(b) {
@@ -1012,13 +1012,13 @@
       const stale = fw.models.filter((m) => !m.locked && stockOf(m) !== m.name && m.displayName !== m.name
         && m.displayName === ((D.stockDisp || {})[m.ni] ?? D.stockLong[m.ni])).length;
       if (stale) {
-        status("fw", "warn", "Built by an older version: rebuild this file",
-          `This file was renamed by version 1.1.0 or earlier, which left ${stale} models' display names in the unit's model database as Line 6's. Build it again below with version ${H.VERSION}. Your names are loaded as they are.`,
+        status("fw", "warn", "Some display names are still Line 6's: build this file again",
+          `This file's model names were changed before, but ${stale} models still have Line 6's display name in the unit's model database. That happens with files from version 1.1.0 or earlier of this page, or from another tool such as HXtra's Real block names. Build it below and the display names will match. The names already in the file are loaded as they are; to use this page's suggestions instead, choose Use suggested names.`,
           [["File", file.name], ["MD5", fw.fileMd5], ["Unit", fw.unit + " 3.80.0"]]);
       } else
       status("fw", "ok", "Ready: " + (fw.known || (fw.unit + " 3.80.0" + (renamed ? ", renamed before" : " (checks pass)"))),
         renamed ? `This file already has ${renamed} custom names. They're shown below as they are.` : "All its checksums pass. " + fw.models.length + " models found.",
-        [["File", file.name], ["MD5", fw.fileMd5], ...(fw.builtBy ? [["Renamed by", "version " + fw.builtBy]] : []), ...(isFx() ? [] : [["Tested", "not yet on this unit: the page reads it, but no renamed file has been installed on one"]]), ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
+        [["File", file.name], ["MD5", fw.fileMd5], ...(fw.builtBy ? [["Renamed by", "version " + fw.builtBy]] : []), ...(fw.unitKey !== "HX_Stomp_XL" ? [] : [["Tested", "not yet on this unit: the page reads it, but no renamed file has been installed on one"]]), ["NAM A2 Lite", fw.models.some((m) => m.locked) ? "present (its name stays)" : "not in this file"]]);
       $("s2").classList.add("done"); $("nav2").classList.add("done");
       buildGroups(renamed === 0);
       showPresets();
